@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { GraduationCap, LayoutDashboard, LogOut, School, UserPlus } from "lucide-react";
-import { Role } from "@prisma/client";
 import { logoutAction } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
+import type { UserRole } from "@/lib/database.types";
 
-export function Sidebar({ user }: { user: { name: string; email: string; role: Role } }) {
+export function Sidebar({ user }: { user: { email: string; role: UserRole } }) {
   const links = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/dashboard/students/new", label: "Add Student", icon: UserPlus },
-    ...(user.role === Role.ADMIN ? [{ href: "/dashboard/admin/universities", label: "Universities", icon: School }] : []),
+    ...(user.role === "admin" ? [{ href: "/dashboard/admin/universities", label: "Universities", icon: School }] : []),
   ];
 
   return (
@@ -37,9 +37,9 @@ export function Sidebar({ user }: { user: { name: string; email: string; role: R
 
       <div className="mt-auto grid gap-4 border-t border-zinc-200 pt-5">
         <div>
-          <p className="text-sm font-medium">{user.name}</p>
+          <p className="text-sm font-medium">{user.role === "admin" ? "Admin" : "Counsellor"}</p>
           <p className="text-xs text-zinc-500">{user.email}</p>
-          <p className="mt-1 text-xs font-medium text-zinc-700">{user.role}</p>
+          <p className="mt-1 text-xs font-medium text-zinc-700">{titleCase(user.role)}</p>
         </div>
         <form action={logoutAction}>
           <Button variant="secondary" className="w-full">
@@ -50,4 +50,8 @@ export function Sidebar({ user }: { user: { name: string; email: string; role: R
       </div>
     </aside>
   );
+}
+
+function titleCase(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }

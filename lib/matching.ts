@@ -1,75 +1,46 @@
-import { IntakeStatus, type Course, type Fee, type Intake, type Requirement, type University } from "@prisma/client";
-
-export type StudentForMatching = {
-  gpa: number;
-  englishScore: number;
-  budget: number;
-  preferredIntake: "JAN" | "MAY" | "SEP";
-  courseInterest: string;
-  preferredCity?: string | null;
-};
-
-export type CourseForMatching = Course & {
-  university: University;
-  requirement: Requirement | null;
-  fee: Fee | null;
-  intakes: Intake[];
-};
+import type { CourseWithUniversity, Intake, Student } from "@/lib/database.types";
 
 export type Recommendation = {
-  course: CourseForMatching;
+  course: CourseWithUniversity;
   intake: Intake;
   score: number;
-  reasons: string[];
 };
 
-function includesToken(haystack: string, needle: string) {
-  return haystack.toLowerCase().includes(needle.toLowerCase());
+function preferenceMatch(course: CourseWithUniversity, student: Student) {
+  const preference = student.preferred_course.toLowerCase();
+  const haystack = `${course.name} ${course.field}`.toLowerCase();
+  return haystack.includes(preference) || preference.includes(course.field.toLowerCase()) ? 1 : 0.45;
 }
 
-export function scoreCourse(student: StudentForMatching, course: CourseForMatching): Recommendation | null {
-  if (!course.requirement || !course.fee) return null;
-
-  const intake = course.intakes.find(
-    (item) => item.season === student.preferredIntake && item.status !== IntakeStatus.CLOSED,
-  );
-  if (!intake) return null;
-
-  const gpaEligible = student.gpa >= course.requirement.minimumGpa;
-  const englishEligible = student.englishScore >= course.requirement.minimumIelts;
-  const budgetEligible = student.budget >= course.fee.tuitionFee;
-  if (!gpaEligible || !englishEligible || !budgetEligible) return null;
-
-  const gpaBuffer = Math.min(1, (student.gpa - course.requirement.minimumGpa) / 20);
-  const englishBuffer = Math.min(1, (student.englishScore - course.requirement.minimumIelts) / 2);
-  const budgetBuffer = Math.min(1, (student.budget - course.fee.tuitionFee) / Math.max(course.fee.tuitionFee, 1));
-  const coursePreference =
-    includesToken(course.name, student.courseInterest) || includesToken(course.field, student.courseInterest) ? 1 : 0.35;
+export function calculateMatchScore(student: Student, course: CourseWithUniversity, intake: Intake) {
+  const gpaHeadroom = Math.min(1, Math.max(0, student.gpa - course.min_gpa) / 20);
+  const ieltsHeadroom = Math.min(1, Math.max(0, student.ielts - course.min_ielts) / 2);
+  const budgetHeadroom = Math.min(1, Math.max(0, student.budget - course.tuition_fee) / Math.max(course.tuition_fee, 1));
+  const coursePreference = preferenceMatch(course, student);
   const cityPreference =
-    student.preferredCity && includesToken(course.university.location, student.preferredCity) ? 1 : 0.65;
+    student.preferred_city && course.universities?.location.toLowerCase().includes(student.preferred_city.toLowerCase()) ? 1 : 0.7;
+  const intakeWeight = intake.status === "open" ? 1 : 0.82;
 
-  const score = Math.round(
+  return Math.round(
     100 *
-      (0.3 * (0.75 + gpaBuffer * 0.25) +
-        0.25 * (0.75 + englishBuffer * 0.25) +
-        0.2 * (0.7 + budgetBuffer * 0.3) +
-        0.15 * coursePreference +
-        0.1 * cityPreference),
+      (0.28 * (0.75 + gpaHeadroom * 0.25) +
+        0.24 * (0.75 + ieltsHeadroom * 0.25) +
+        0.2 * (0.7 + budgetHeadroom * 0.3) +
+        0.16 * coursePreference +
+        0.07 * cityPreference +
+        0.05 * intakeWeight),
   );
-
-  const reasons = [
-    `GPA ${student.gpa} meets ${course.requirement.minimumGpa}`,
-    `English ${student.englishScore} meets ${course.requirement.minimumIelts}`,
-    `Budget covers ${course.fee.tuitionFee}`,
-    `${intake.season} intake is ${intake.status.toLowerCase().replace("_", " ")}`,
-  ];
-
-  return { course, intake, score: Math.min(score, 100), reasons };
 }
 
-export function recommendCourses(student: StudentForMatching, courses: CourseForMatching[]) {
+export function recommendCourses(student: Student, courses: CourseWithUniversity[]) {
   return courses
-    .map((course) => scoreCourse(student, course))
-    .filter((result): result is Recommendation => Boolean(result))
+    .flatMap((course) => {
+      const intake = course.intakes.find((item) => item.intake === student.intake && item.status !== "closed");
+      if (!intake) return [];
+      if (student.gpa < course.min_gpa) return [];
+      if (student.ielts < course.min_ielts) return [];
+      if (student.budget < course.tuition_fee) return [];
+      return [{ course, intake, score: calculateMatchScore(student, course, intake) }];
+    })
     .sort((a, b) => b.score - a.score);
 }

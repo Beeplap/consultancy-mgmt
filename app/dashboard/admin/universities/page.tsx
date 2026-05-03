@@ -1,31 +1,31 @@
 import { Trash2 } from "lucide-react";
-import { IntakeStatus } from "@prisma/client";
 import { UniversityCourseForm } from "@/components/university-form";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/field";
 import { IntakeBadge } from "@/components/ui/badge";
 import { deleteCourseAction, updateIntakeStatusAction } from "@/lib/actions/universities";
-import { requireAdmin } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { currencyGBP, titleCase } from "@/lib/format";
-import { prisma } from "@/lib/prisma";
+import type { Course, Intake, IntakeStatus, University } from "@/lib/database.types";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+type CourseRow = Course & { intakes: Intake[] };
+type UniversityRow = University & { courses: CourseRow[] };
+const intakeStatuses: IntakeStatus[] = ["open", "closing", "closed"];
 
 export default async function UniversitiesPage() {
-  await requireAdmin();
-  const universities = await prisma.university.findMany({
-    orderBy: { name: "asc" },
-    include: {
-      courses: {
-        orderBy: { name: "asc" },
-        include: { requirement: true, fee: true, intakes: { orderBy: { season: "asc" } } },
-      },
-    },
-  });
+  await requireRole("admin");
+  const supabase = await createSupabaseServerClient();
+  const { data: universities = [] } = await supabase
+    .from("universities")
+    .select("*, courses(*, intakes(*))")
+    .order("name");
 
   return (
     <div className="grid gap-7">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">University Management</h1>
-        <p className="mt-1 text-sm text-zinc-600">Admin CRUD for universities, courses, entry requirements, fees, payment plans, and intake availability.</p>
+        <p className="mt-1 text-sm text-zinc-600">Admin CRUD for universities, courses, fees, requirements, and intake availability.</p>
       </div>
 
       <section className="rounded-lg border border-zinc-200 bg-white p-6">
@@ -38,22 +38,19 @@ export default async function UniversitiesPage() {
           <h2 className="text-lg font-semibold">Courses and intakes</h2>
         </div>
         <div className="divide-y divide-zinc-100">
-          {universities.map((university) => (
+          {(universities as UniversityRow[]).map((university) => (
             <article key={university.id} className="p-5">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold">{university.name}</h3>
-                  <p className="text-sm text-zinc-500">{university.location}{university.ranking ? ` · Ranking ${university.ranking}` : ""}</p>
-                </div>
+              <div className="mb-4">
+                <h3 className="font-semibold">{university.name}</h3>
+                <p className="text-sm text-zinc-500">{university.location}{university.ranking ? ` · Ranking ${university.ranking}` : ""}</p>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[980px] text-left text-sm">
+                <table className="w-full min-w-[860px] text-left text-sm">
                   <thead className="border-y border-zinc-200 bg-zinc-50 text-xs uppercase text-zinc-500">
                     <tr>
                       <th className="px-4 py-3 font-medium">Course</th>
                       <th className="px-4 py-3 font-medium">Requirements</th>
                       <th className="px-4 py-3 font-medium">Fees</th>
-                      <th className="px-4 py-3 font-medium">Payment Plan</th>
                       <th className="px-4 py-3 font-medium">Intakes</th>
                       <th className="px-4 py-3 font-medium">Delete</th>
                     </tr>
@@ -63,26 +60,19 @@ export default async function UniversitiesPage() {
                       <tr key={course.id}>
                         <td className="px-4 py-4">
                           <p className="font-medium">{course.name}</p>
-                          <p className="text-xs text-zinc-500">{course.degreeType} · {course.duration} · {course.field}</p>
+                          <p className="text-xs text-zinc-500">{course.degree} · {course.duration} · {course.field}</p>
                         </td>
-                        <td className="px-4 py-4">
-                          GPA {course.requirement?.minimumGpa ?? "N/A"}<br />
-                          IELTS {course.requirement?.minimumIelts ?? "N/A"}
-                        </td>
-                        <td className="px-4 py-4">
-                          {course.fee ? currencyGBP(course.fee.tuitionFee) : "N/A"}
-                          {course.fee ? <p className="text-xs text-zinc-500">Deposit {currencyGBP(course.fee.depositAmount)}</p> : null}
-                        </td>
-                        <td className="max-w-xs px-4 py-4 text-zinc-600">{course.fee?.installmentDetails ?? "N/A"}</td>
+                        <td className="px-4 py-4">GPA {course.min_gpa}<br />IELTS {course.min_ielts}</td>
+                        <td className="px-4 py-4">{currencyGBP(course.tuition_fee)}</td>
                         <td className="px-4 py-4">
                           <div className="grid gap-2">
                             {course.intakes.map((intake) => (
                               <form key={intake.id} action={updateIntakeStatusAction} className="flex items-center gap-2">
                                 <input type="hidden" name="intakeId" value={intake.id} />
-                                <span className="w-10 font-medium">{intake.season}</span>
+                                <span className="w-10 font-medium">{intake.intake}</span>
                                 <IntakeBadge status={intake.status} />
                                 <Select name="status" defaultValue={intake.status} className="h-9">
-                                  {Object.values(IntakeStatus).map((status) => <option key={status} value={status}>{titleCase(status)}</option>)}
+                                  {intakeStatuses.map((status) => <option key={status} value={status}>{titleCase(status)}</option>)}
                                 </Select>
                                 <Button variant="secondary" className="h-9">Save</Button>
                               </form>
