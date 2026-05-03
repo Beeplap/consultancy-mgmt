@@ -79,3 +79,12 @@ export async function deleteCourseAction(formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath("/dashboard/admin/universities");
 }
+
+export async function deleteUniversityAction(formData: FormData) {
+  await requireRole("admin");
+  const supabase = await createSupabaseServerClient();
+  const universityId = required(formData, "universityId");
+  const { error } = await supabase.from("universities").delete().eq("id", universityId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/dashboard/admin/universities");
+}

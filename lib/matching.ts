@@ -106,7 +106,7 @@ export function isCourseEligible(student: MatchingStudent | MatchingCriteria, co
     return acceptsWaiver(course, getIeltsWaiverStatus(student));
   }
 
-  return student.ielts !== undefined && student.ielts >= course.min_ielts;
+  return student.ielts === undefined || student.ielts >= course.min_ielts;
 }
 
 export function calculateMatchScore(student: MatchingStudent | MatchingCriteria, course: CourseWithUniversity, intake: Intake) {

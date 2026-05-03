@@ -1,6 +1,4 @@
-import { Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Field, Input, Select } from "@/components/ui/field";
+import { MatchFiltersForm } from "@/components/match-filters-form";
 import { IntakeBadge } from "@/components/ui/badge";
 import { currencyGBP } from "@/lib/format";
 import { getIeltsWaiverStatus, rankCourses, type MatchingCriteria } from "@/lib/matching";
@@ -18,9 +16,6 @@ type PageProps = {
     course?: string;
   }>;
 };
-
-const englishGrades: EnglishGrade[] = ["A+", "A", "B+", "B", "C+", "C", "D", "E"];
-const intakes: IntakeName[] = ["Jan", "May", "Sep"];
 
 export default async function CourseRecommendationsPage({ searchParams }: PageProps) {
   const filters = await searchParams;
@@ -46,101 +41,62 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
   const waiverStatus = criteria.applyWithWaiver ? getIeltsWaiverStatus(criteria) : "required";
 
   return (
-    <div className="grid gap-7">
+    <div className="grid gap-5">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Match Student</h1>
-        <p className="mt-1 text-sm text-zinc-600">Filter universities by GPA, English grade, IELTS waiver, IELTS score, budget, intake, and course.</p>
+        <p className="mt-1 text-sm text-zinc-600">Filter universities by GPA, English grade, IELTS, budget, intake, and course.</p>
       </div>
 
       <section className="rounded-lg border border-zinc-200 bg-white">
-        <form className="grid gap-4 border-b border-zinc-200 p-5 lg:grid-cols-[140px_150px_180px_140px_160px_140px_1fr_auto]">
-          <Field label="GPA">
-            <Input name="gpa" type="number" step="0.1" min="0" max="100" defaultValue={filters.gpa} placeholder="75" />
-          </Field>
-          <Field label="English Grade">
-            <Select name="englishGrade" defaultValue={filters.englishGrade ?? ""}>
-              <option value="">Select</option>
-              {englishGrades.map((grade) => (
-                <option key={grade}>{grade}</option>
-              ))}
-            </Select>
-          </Field>
-          <label className="flex items-end gap-3 pb-2 text-sm font-medium text-zinc-800">
-            <input name="waiver" type="checkbox" value="1" defaultChecked={criteria.applyWithWaiver} className="size-4 accent-black" />
-            Apply with waiver
-          </label>
-          <Field label="IELTS">
-            <Input name="ielts" type="number" step="0.1" min="0" max="9" defaultValue={filters.ielts} placeholder="6.0" />
-          </Field>
-          <Field label="Budget">
-            <Input name="budget" type="number" min="0" defaultValue={filters.budget} placeholder="12000" />
-          </Field>
-          <Field label="Intake">
-            <Select name="intake" defaultValue={filters.intake ?? ""}>
-              <option value="">Any</option>
-              {intakes.map((intake) => (
-                <option key={intake}>{intake}</option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Course">
-            <Input name="course" defaultValue={filters.course} placeholder="IT, Business, Health" />
-          </Field>
-          <div className="flex items-end">
-            <Button>
-              <Filter size={16} />
-              Match
-            </Button>
-          </div>
-        </form>
+        <MatchFiltersForm filters={filters} />
 
-        <div className="border-b border-zinc-200 px-5 py-3 text-sm text-zinc-600">
-          {criteria.applyWithWaiver ? waiverCopy(waiverStatus) : "Waiver off: universities are filtered by minimum GPA and IELTS requirements."}
+        <div className="border-b border-zinc-200 px-4 py-2 text-sm text-zinc-600">
+          {criteria.applyWithWaiver ? waiverCopy(waiverStatus) : "Waiver off: add IELTS to filter by minimum IELTS requirements."}
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left text-sm">
+        <div className="max-h-[calc(100vh-260px)] overflow-auto">
+          <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-zinc-500">
               <tr>
-                <th className="px-5 py-3 font-medium">University</th>
-                <th className="px-5 py-3 font-medium">Course</th>
-                <th className="px-5 py-3 font-medium">Requirements</th>
-                <th className="px-5 py-3 font-medium">Waiver</th>
-                <th className="px-5 py-3 font-medium">Tuition</th>
-                <th className="px-5 py-3 font-medium">Intake</th>
-                <th className="px-5 py-3 font-medium">Match</th>
+                <th className="px-4 py-2 font-medium">University</th>
+                <th className="px-4 py-2 font-medium">Course</th>
+                <th className="px-4 py-2 font-medium">Req.</th>
+                <th className="px-4 py-2 font-medium">Waiver</th>
+                <th className="px-4 py-2 font-medium">Tuition</th>
+                <th className="px-4 py-2 font-medium">Intake</th>
+                <th className="px-4 py-2 font-medium">Match</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {recommendations.map((recommendation) => (
                 <tr key={`${recommendation.course.id}-${recommendation.intake.id}`} className="hover:bg-zinc-50">
-                  <td className="px-5 py-4">
+                  <td className="px-4 py-3">
                     <p className="font-medium">{recommendation.course.universities?.name}</p>
                     <p className="text-xs text-zinc-500">{recommendation.course.universities?.location}</p>
                   </td>
-                  <td className="px-5 py-4">
+                  <td className="px-4 py-3">
                     <p>{recommendation.course.name}</p>
                     <p className="text-xs text-zinc-500">{recommendation.course.degree} · {recommendation.course.duration} · {recommendation.course.field}</p>
                   </td>
-                  <td className="px-5 py-4">
+                  <td className="px-4 py-3">
                     GPA {recommendation.course.min_gpa}
                     <br />
                     IELTS {recommendation.course.min_ielts}
                   </td>
-                  <td className="px-5 py-4">{formatWaiver(recommendation.course.ielts_waiver)}</td>
-                  <td className="px-5 py-4">{currencyGBP(recommendation.course.tuition_fee)}</td>
-                  <td className="px-5 py-4">
+                  <td className="px-4 py-3">{formatWaiver(recommendation.course.ielts_waiver)}</td>
+                  <td className="px-4 py-3">{currencyGBP(recommendation.course.tuition_fee)}</td>
+                  <td className="px-4 py-3">
                     <p className="mb-1 font-medium">{recommendation.intake.intake}</p>
                     <IntakeBadge status={recommendation.intake.status} />
                   </td>
-                  <td className="px-5 py-4">
+                  <td className="px-4 py-3">
                     <span className={recommendation.score >= 80 ? "font-semibold text-green-700" : "font-semibold text-zinc-900"}>{recommendation.score}%</span>
                   </td>
                 </tr>
               ))}
               {recommendations.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-zinc-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-zinc-500">
                     No universities match the current filters.
                   </td>
                 </tr>

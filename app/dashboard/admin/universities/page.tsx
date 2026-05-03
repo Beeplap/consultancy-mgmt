@@ -1,9 +1,10 @@
 import { Trash2 } from "lucide-react";
 import { UniversityCourseForm } from "@/components/university-form";
 import { Button } from "@/components/ui/button";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { Select } from "@/components/ui/field";
 import { IntakeBadge } from "@/components/ui/badge";
-import { deleteCourseAction, updateIntakeStatusAction } from "@/lib/actions/universities";
+import { deleteCourseAction, deleteUniversityAction, updateIntakeStatusAction } from "@/lib/actions/universities";
 import { requireRole } from "@/lib/auth";
 import { currencyGBP, titleCase } from "@/lib/format";
 import type { Course, Intake, IntakeStatus, University } from "@/lib/database.types";
@@ -40,9 +41,18 @@ export default async function UniversitiesPage() {
         <div className="divide-y divide-zinc-100">
           {(universities as UniversityRow[]).map((university) => (
             <article key={university.id} className="p-5">
-              <div className="mb-4">
-                <h3 className="font-semibold">{university.name}</h3>
-                <p className="text-sm text-zinc-500">{university.location}{university.ranking ? ` · Ranking ${university.ranking}` : ""}</p>
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold">{university.name}</h3>
+                  <p className="text-sm text-zinc-500">{university.location}{university.ranking ? ` · Ranking ${university.ranking}` : ""}</p>
+                </div>
+                <form action={deleteUniversityAction}>
+                  <input type="hidden" name="universityId" value={university.id} />
+                  <ConfirmSubmitButton message={`Delete ${university.name} and all of its courses?`} className="h-9">
+                    <Trash2 size={15} />
+                    Delete university
+                  </ConfirmSubmitButton>
+                </form>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[860px] text-left text-sm">
@@ -88,7 +98,10 @@ export default async function UniversitiesPage() {
                         <td className="px-4 py-4">
                           <form action={deleteCourseAction}>
                             <input type="hidden" name="courseId" value={course.id} />
-                            <Button variant="danger" className="h-9"><Trash2 size={15} /> Delete</Button>
+                            <ConfirmSubmitButton message={`Delete ${course.name}?`} className="h-9">
+                              <Trash2 size={15} />
+                              Delete
+                            </ConfirmSubmitButton>
                           </form>
                         </td>
                       </tr>
