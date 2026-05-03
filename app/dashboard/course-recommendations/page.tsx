@@ -1,12 +1,13 @@
 import { MatchFiltersForm } from "@/components/match-filters-form";
 import { IntakeBadge } from "@/components/ui/badge";
 import { currencyGBP } from "@/lib/format";
-import { getIeltsWaiverStatus, rankCourses, type MatchingCriteria } from "@/lib/matching";
+import { getIeltsWaiverStatus, rankCourses, type MatchingCriteria, type Recommendation } from "@/lib/matching";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { CourseWithUniversity, EnglishGrade, IntakeName } from "@/lib/database.types";
+import type { CourseWithUniversity, EnglishGrade, Intake, IntakeName } from "@/lib/database.types";
 
 type PageProps = {
   searchParams: Promise<{
+    _match?: string;
     gpa?: string;
     englishGrade?: EnglishGrade;
     waiver?: string;
@@ -17,10 +18,22 @@ type PageProps = {
   }>;
 };
 
+const intakeRank: Record<IntakeName, number> = { Jan: 0, May: 1, Sep: 2 };
+
+/** One row per course; all intakes in one cell. */
+type CourseTableRow = {
+  course: CourseWithUniversity;
+  intakeEntries: Array<{ intake: Intake; score?: number | null }>;
+  matchScore: number | null;
+};
+
 export default async function CourseRecommendationsPage({ searchParams }: PageProps) {
   const filters = await searchParams;
+  const ranMatch = filters._match === "1";
   const criteria = toCriteria(filters);
   const supabase = await createSupabaseServerClient();
+
+  const { count: universityDirectoryCount } = await supabase.from("universities").select("*", { count: "exact", head: true });
 
   let query = supabase
     .from("courses")
@@ -28,32 +41,70 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
     .neq("intakes.status", "closed")
     .order("fee", { ascending: true, nullsFirst: false });
 
-  if (criteria.gpa !== undefined) query = query.or(`min_gpa.is.null,min_gpa.lte.${criteria.gpa}`);
-  if (criteria.budget !== undefined) query = query.or(`fee.is.null,fee.lte.${criteria.budget}`);
-  if (criteria.intake) query = query.eq("intakes.intake", criteria.intake);
-  if (!criteria.applyWithWaiver && criteria.ielts !== undefined) {
-    query = query.or(`min_ielts.is.null,min_ielts.lte.${criteria.ielts}`);
+  if (ranMatch) {
+    if (criteria.gpa !== undefined) query = query.or(`min_gpa.is.null,min_gpa.lte.${criteria.gpa}`);
+    if (criteria.budget !== undefined) query = query.or(`fee.is.null,fee.lte.${criteria.budget}`);
+    if (criteria.intake) query = query.eq("intakes.intake", criteria.intake);
+    if (!criteria.applyWithWaiver && criteria.ielts !== undefined) {
+      query = query.or(`min_ielts.is.null,min_ielts.lte.${criteria.ielts}`);
+    }
+    if (criteria.applyWithWaiver) query = query.neq("ielts_waiver", "none");
   }
-  if (criteria.applyWithWaiver) query = query.neq("ielts_waiver", "none");
 
-  const { data: courses = [], error } = await query;
+  const { data: coursesRaw, error } = await query;
   if (error) throw new Error(error.message);
 
-  const recommendations = rankCourses(criteria, filterCoursePreference(courses as CourseWithUniversity[], criteria.preferredCourse));
+  let courses = mergeCourseRows((coursesRaw ?? []) as CourseWithUniversity[]);
+
+  if (ranMatch) {
+    courses = filterCoursePreference(courses, criteria.preferredCourse);
+  }
+
+  const rows: CourseTableRow[] = ranMatch
+    ? groupRecommendations(rankCourses(criteria, courses))
+    : catalogGroupedRows(courses);
+
+  const uniqueUniversities = new Set(rows.map((r) => r.course.university_id)).size;
+  const directoryTotal = universityDirectoryCount ?? uniqueUniversities;
+
   const waiverStatus = criteria.applyWithWaiver ? getIeltsWaiverStatus(criteria) : "required";
 
   return (
     <div className="grid gap-5">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Match Student</h1>
-        <p className="mt-1 text-sm text-zinc-600">Filter universities by GPA, English grade, IELTS, budget, intake, and course.</p>
+        <p className="mt-1 text-sm text-zinc-600">
+          Each course is one row. Intakes appear together before Match; filtered results keep the same layout.
+        </p>
       </div>
 
       <section className="rounded-lg border border-zinc-200 bg-white">
         <MatchFiltersForm filters={filters} />
 
         <div className="border-b border-zinc-200 px-4 py-2 text-sm text-zinc-600">
-          {criteria.applyWithWaiver ? waiverCopy(waiverStatus) : "Waiver off: add IELTS to filter by minimum IELTS requirements."}
+          {!ranMatch ? (
+            <>
+              Showing <span className="font-medium text-zinc-800">{rows.length}</span> courses across{" "}
+              <span className="font-medium text-zinc-800">{uniqueUniversities}</span> universities
+              {directoryTotal > 0 ? (
+                <>
+                  {" "}
+                  (<span className="font-medium text-zinc-800">{directoryTotal}</span> in directory)
+                </>
+              ) : null}
+              . Click <span className="font-medium text-zinc-800">Match</span> to filter.
+            </>
+          ) : criteria.applyWithWaiver ? (
+            <>
+              {waiverCopy(waiverStatus)} <span className="font-medium text-zinc-800">{rows.length}</span> matching courses ·{" "}
+              <span className="font-medium text-zinc-800">{uniqueUniversities}</span> universities.
+            </>
+          ) : (
+            <>
+              Waiver off: IELTS filters apply when set. <span className="font-medium text-zinc-800">{rows.length}</span> matching courses ·{" "}
+              <span className="font-medium text-zinc-800">{uniqueUniversities}</span> universities.
+            </>
+          )}
         </div>
 
         <div className="max-h-[calc(100vh-260px)] overflow-auto">
@@ -65,41 +116,60 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
                 <th className="px-4 py-2 font-medium">Req.</th>
                 <th className="px-4 py-2 font-medium">Waiver</th>
                 <th className="px-4 py-2 font-medium">Fee</th>
-                <th className="px-4 py-2 font-medium">Intake</th>
+                <th className="min-w-[200px] px-4 py-2 font-medium">Intakes</th>
                 <th className="px-4 py-2 font-medium">Match</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {recommendations.map((recommendation) => (
-                <tr key={`${recommendation.course.id}-${recommendation.intake.id}`} className="hover:bg-zinc-50">
-                  <td className="px-4 py-3">
-                    <p className="font-medium">{recommendation.course.universities?.name}</p>
-                    <p className="text-xs text-zinc-500">{recommendation.course.universities?.location}</p>
+              {rows.map((row) => (
+                <tr key={row.course.id} className="hover:bg-zinc-50">
+                  <td className="px-4 py-3 align-top">
+                    <p className="font-medium">{row.course.universities?.name}</p>
+                    <p className="text-xs text-zinc-500">{row.course.universities?.location}</p>
                   </td>
-                  <td className="px-4 py-3">
-                    <p>{recommendation.course.name}</p>
-                    <p className="text-xs text-zinc-500">{recommendation.course.degree} · {recommendation.course.duration} · {recommendation.course.field}</p>
+                  <td className="px-4 py-3 align-top">
+                    <p>{row.course.name ?? "—"}</p>
+                    <p className="text-xs text-zinc-500">
+                      {[row.course.degree, row.course.duration, row.course.field].filter(Boolean).join(" · ") || "—"}
+                    </p>
                   </td>
-                  <td className="px-4 py-3">
-                    GPA {recommendation.course.min_gpa ?? "—"}
+                  <td className="px-4 py-3 align-top">
+                    GPA {row.course.min_gpa ?? "—"}
                     <br />
-                    IELTS {recommendation.course.min_ielts ?? "—"}
+                    IELTS {row.course.min_ielts ?? "—"}
                   </td>
-                  <td className="px-4 py-3">{formatWaiver(recommendation.course.ielts_waiver)}</td>
-                  <td className="px-4 py-3">{currencyGBP(recommendation.course.fee)}</td>
-                  <td className="px-4 py-3">
-                    <p className="mb-1 font-medium">{recommendation.intake.intake}</p>
-                    <IntakeBadge status={recommendation.intake.status} />
+                  <td className="px-4 py-3 align-top">{formatWaiver(row.course.ielts_waiver)}</td>
+                  <td className="px-4 py-3 align-top">{currencyGBP(row.course.fee)}</td>
+                  <td className="px-4 py-3 align-top">
+                    <div className="flex flex-wrap gap-2">
+                      {row.intakeEntries.map(({ intake }) => (
+                        <span
+                          key={intake.id}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1"
+                        >
+                          <span className="text-xs font-medium">{intake.intake}</span>
+                          <IntakeBadge status={intake.status} />
+                        </span>
+                      ))}
+                    </div>
                   </td>
-                  <td className="px-4 py-3">
-                    <span className={recommendation.score >= 80 ? "font-semibold text-green-700" : "font-semibold text-zinc-900"}>{recommendation.score}%</span>
+                  <td className="px-4 py-3 align-top">
+                    {row.matchScore != null ? (
+                      <span
+                        className={row.matchScore >= 80 ? "font-semibold text-green-700" : "font-semibold text-zinc-900"}
+                      >
+                        {row.matchScore}%
+                      </span>
+                    ) : (
+                      <span className="text-zinc-400">—</span>
+                    )}
                   </td>
                 </tr>
               ))}
-              {recommendations.length === 0 ? (
+              {rows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-zinc-500">
-                    No universities match the current filters.
+                    {ranMatch ? "No courses match the current filters." : "No courses with open intakes yet."}
                   </td>
                 </tr>
               ) : null}
@@ -109,6 +179,66 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
       </section>
     </div>
   );
+}
+
+function mergeCourseRows(rows: CourseWithUniversity[]): CourseWithUniversity[] {
+  const byId = new Map<string, CourseWithUniversity>();
+  for (const row of rows) {
+    const prev = byId.get(row.id);
+    if (!prev) {
+      byId.set(row.id, { ...row, intakes: [...row.intakes] });
+      continue;
+    }
+    const seen = new Set(prev.intakes.map((i) => i.id));
+    for (const i of row.intakes) {
+      if (!seen.has(i.id)) {
+        prev.intakes.push(i);
+        seen.add(i.id);
+      }
+    }
+  }
+  return [...byId.values()];
+}
+
+function sortIntakes(entries: Array<{ intake: Intake }>) {
+  return [...entries].sort((a, b) => intakeRank[a.intake.intake as IntakeName] - intakeRank[b.intake.intake as IntakeName]);
+}
+
+function catalogGroupedRows(courses: CourseWithUniversity[]): CourseTableRow[] {
+  const sorted = [...courses].sort((a, b) => sortCourses(a, b));
+  return sorted.map((course) => {
+    const open = course.intakes.filter((i) => i.status !== "closed");
+    const intakeEntries = sortIntakes(open.map((intake) => ({ intake, score: null as number | null })));
+    return { course, intakeEntries, matchScore: null };
+  });
+}
+
+function groupRecommendations(recommendations: Recommendation[]): CourseTableRow[] {
+  const byCourseId = new Map<string, Recommendation[]>();
+  for (const rec of recommendations) {
+    const list = byCourseId.get(rec.course.id) ?? [];
+    list.push(rec);
+    byCourseId.set(rec.course.id, list);
+  }
+
+  const rows: CourseTableRow[] = [];
+  for (const group of byCourseId.values()) {
+    const course = group[0].course;
+    const intakeEntries = sortIntakes(
+      group.map((rec) => ({ intake: rec.intake, score: rec.score as number | null })),
+    );
+    const scores = group.map((r) => r.score);
+    const matchScore = Math.max(...scores);
+    rows.push({ course, intakeEntries, matchScore });
+  }
+
+  return rows.sort((a, b) => sortCourses(a.course, b.course));
+}
+
+function sortCourses(a: CourseWithUniversity, b: CourseWithUniversity) {
+  const ua = (a.universities?.name ?? "").localeCompare(b.universities?.name ?? "");
+  if (ua !== 0) return ua;
+  return (a.name ?? "").localeCompare(b.name ?? "");
 }
 
 function toCriteria(filters: Awaited<PageProps["searchParams"]>): MatchingCriteria {
@@ -142,13 +272,12 @@ function filterCoursePreference(courses: CourseWithUniversity[], preference?: st
 function formatWaiver(value: CourseWithUniversity["ielts_waiver"]) {
   if (value === "b_or_above") return "B or above";
   if (value === "c_plus_limited") return "C+ limited";
-
-  return "No waiver";
+  if (value === "none") return "No waiver";
+  return "—";
 }
 
 function waiverCopy(status: ReturnType<typeof getIeltsWaiverStatus>) {
   if (status === "waived") return "Waiver on: English grade B or above can apply to universities that accept IELTS waiver.";
   if (status === "limited") return "Waiver on: English grade C+ only shows universities marked as C+ limited.";
-
   return "Waiver on: select English grade B or above, or C+ for limited universities.";
 }
