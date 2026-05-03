@@ -17,6 +17,7 @@ create table if not exists public.students (
   gpa numeric not null,
   backlogs integer not null default 0,
   year integer not null,
+  english_grade text check (english_grade in ('A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'E')),
   ielts numeric not null,
   preferred_course text not null,
   budget integer not null,

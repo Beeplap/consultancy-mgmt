@@ -2,6 +2,7 @@ export type UserRole = "admin" | "counsellor";
 export type StudentStatus = "new" | "applied" | "offer" | "visa" | "enrolled";
 export type IntakeName = "Jan" | "May" | "Sep";
 export type IntakeStatus = "open" | "closed" | "closing";
+export type EnglishGrade = "A+" | "A" | "B+" | "B" | "C+" | "C" | "D" | "E";
 
 export type UserProfile = {
   id: string;
@@ -20,6 +21,7 @@ export type Student = {
   gpa: number;
   backlogs: number;
   year: number;
+  english_grade: EnglishGrade | null;
   ielts: number;
   preferred_course: string;
   budget: number;
@@ -83,7 +85,7 @@ export type Database = {
       };
       students: {
         Row: Student;
-        Insert: Omit<Student, "id" | "created_at"> & { id?: string };
+        Insert: Omit<Student, "id" | "created_at" | "english_grade"> & { id?: string; english_grade?: EnglishGrade | null };
         Update: Partial<Omit<Student, "id" | "created_at">>;
         Relationships: [];
       };
