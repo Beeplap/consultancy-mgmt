@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { updateUniversityCourseAction } from "@/lib/actions/universities";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Select } from "@/components/ui/field";
+import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import type { Course, Intake, IntakeName, IntakeStatus } from "@/lib/database.types";
 
 type UniversityOption = { id: string; name: string | null };
@@ -118,6 +118,15 @@ export function CourseEditForm({ course, universities }: { course: CourseWithInt
           ) : null}
         </div>
       </div>
+      <Field label="Course description (optional)">
+        <Textarea
+          name="courseDescription"
+          defaultValue={course.description ?? ""}
+          placeholder="Per course notes. Line breaks are kept."
+          rows={4}
+          className="min-h-[6.5rem]"
+        />
+      </Field>
       <div className="grid gap-3">
         <span className="text-sm font-medium text-zinc-800">Intakes (select any that apply)</span>
         <p className="text-xs text-zinc-500">

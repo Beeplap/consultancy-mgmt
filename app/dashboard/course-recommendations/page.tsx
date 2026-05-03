@@ -1,5 +1,5 @@
+import { MatchCourseRows, type MatchCourseRowSerialized } from "@/components/match-course-rows";
 import { MatchFiltersForm } from "@/components/match-filters-form";
-import { IntakeBadge } from "@/components/ui/badge";
 import { currencyGBP } from "@/lib/format";
 import { getIeltsWaiverStatus, rankCourses, type MatchingCriteria, type Recommendation } from "@/lib/matching";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -64,6 +64,8 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
     ? groupRecommendations(rankCourses(criteria, courses))
     : catalogGroupedRows(courses);
 
+  const serializedRows = rows.map((row) => serializeMatchCourseRow(row, ranMatch));
+
   const uniqueUniversities = new Set(rows.map((r) => r.course.university_id)).size;
   const directoryTotal = universityDirectoryCount ?? uniqueUniversities;
 
@@ -111,6 +113,7 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-zinc-500">
               <tr>
+                <th className="w-10 px-2 py-2 font-medium" aria-label="Details" />
                 <th className="px-4 py-2 font-medium">University</th>
                 <th className="px-4 py-2 font-medium">Course</th>
                 <th className="px-4 py-2 font-medium">Req.</th>
@@ -120,60 +123,10 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
                 <th className="px-4 py-2 font-medium">Match</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {rows.map((row) => (
-                <tr key={row.course.id} className="hover:bg-zinc-50">
-                  <td className="px-4 py-3 align-top">
-                    <p className="font-medium">{row.course.universities?.name}</p>
-                    <p className="text-xs text-zinc-500">{row.course.universities?.location}</p>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <p>{row.course.name ?? "—"}</p>
-                    <p className="text-xs text-zinc-500">
-                      {[row.course.degree, row.course.duration, row.course.field].filter(Boolean).join(" · ") || "—"}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    GPA {row.course.min_gpa ?? "—"}
-                    <br />
-                    IELTS {row.course.min_ielts ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 align-top">{formatWaiver(row.course.ielts_waiver)}</td>
-                  <td className="px-4 py-3 align-top">{currencyGBP(row.course.fee)}</td>
-                  <td className="px-4 py-3 align-top">
-                    <div className="flex flex-wrap gap-2">
-                      {row.intakeEntries.map(({ intake }) => (
-                        <span
-                          key={intake.id}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1"
-                        >
-                          <span className="text-xs font-medium">{intake.intake}</span>
-                          <IntakeBadge status={intake.status} />
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    {row.matchScore != null ? (
-                      <span
-                        className={row.matchScore >= 80 ? "font-semibold text-green-700" : "font-semibold text-zinc-900"}
-                      >
-                        {row.matchScore}%
-                      </span>
-                    ) : (
-                      <span className="text-zinc-400">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-zinc-500">
-                    {ranMatch ? "No courses match the current filters." : "No courses with open intakes yet."}
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
+            <MatchCourseRows
+              rows={serializedRows}
+              emptyMessage={ranMatch ? "No courses match the current filters." : "No courses with open intakes yet."}
+            />
           </table>
         </div>
       </section>
@@ -195,6 +148,12 @@ function mergeCourseRows(rows: CourseWithUniversity[]): CourseWithUniversity[] {
         prev.intakes.push(i);
         seen.add(i.id);
       }
+    }
+    if (prev.universities && row.universities) {
+      prev.universities = {
+        ...prev.universities,
+        description: prev.universities.description ?? row.universities.description,
+      };
     }
   }
   return [...byId.values()];
@@ -274,6 +233,42 @@ function formatWaiver(value: CourseWithUniversity["ielts_waiver"]) {
   if (value === "c_plus_limited") return "C+ limited";
   if (value === "none") return "No waiver";
   return "—";
+}
+
+function formatCasLine(course: Pick<CourseWithUniversity, "cas_deposit" | "cas_deposit_amount">) {
+  if (course.cas_deposit !== "required") return "Not required";
+  if (course.cas_deposit_amount != null) return `Required (${currencyGBP(course.cas_deposit_amount)})`;
+  return "Required";
+}
+
+function serializeMatchCourseRow(row: CourseTableRow, ranMatch: boolean): MatchCourseRowSerialized {
+  const c = row.course;
+  const scholarship =
+    c.scholarship_upto != null ? `Up to ${currencyGBP(c.scholarship_upto)}` : "—";
+  return {
+    courseId: c.id,
+    universityName: c.universities?.name ?? null,
+    universityLocation: c.universities?.location ?? null,
+    universityDescription: c.universities?.description ?? null,
+    courseName: c.name ?? null,
+    subtitle: [c.degree, c.duration, c.field].filter(Boolean).join(" · ") || "—",
+    courseDescription: c.description ?? null,
+    minGpa: c.min_gpa,
+    minIelts: c.min_ielts,
+    waiver: formatWaiver(c.ielts_waiver),
+    fee: currencyGBP(c.fee),
+    gap: c.accepted_gap?.trim() || "—",
+    cas: formatCasLine(c),
+    scholarship,
+    intakeEntries: row.intakeEntries.map(({ intake, score }) => ({
+      id: intake.id,
+      intake: intake.intake,
+      status: intake.status,
+      score: ranMatch ? (score ?? null) : null,
+    })),
+    matchScore: row.matchScore,
+    ranMatch,
+  };
 }
 
 function waiverCopy(status: ReturnType<typeof getIeltsWaiverStatus>) {

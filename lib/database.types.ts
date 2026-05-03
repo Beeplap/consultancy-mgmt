@@ -39,6 +39,7 @@ export type University = {
   name: string | null;
   location: string | null;
   ranking: number | null;
+  description: string | null;
   created_at?: string;
 };
 
@@ -57,6 +58,7 @@ export type Course = {
   cas_deposit: CasDepositPolicy;
   cas_deposit_amount: number | null;
   scholarship_upto: number | null;
+  description: string | null;
   created_at?: string;
 };
 

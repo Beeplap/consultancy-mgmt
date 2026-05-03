@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createUniversityCourseAction } from "@/lib/actions/universities";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Select } from "@/components/ui/field";
+import { Field, Input, Select, Textarea } from "@/components/ui/field";
 
 type UniversityOption = { id: string; name: string | null };
 
@@ -42,6 +42,13 @@ export function UniversityCourseForm({ universities }: { universities: Universit
               <Input name="ranking" type="number" min="1" />
             </Field>
           </div>
+          <Field label="University description (optional, new university only)">
+            <Textarea
+              name="universityDescription"
+              placeholder="Shown for every course from this university on Match Student. Line breaks are kept."
+              rows={4}
+            />
+          </Field>
         </>
       ) : (
         <p className="text-xs text-zinc-500">This course will be added to the university you selected above.</p>
@@ -116,6 +123,14 @@ export function UniversityCourseForm({ universities }: { universities: Universit
           ) : null}
         </div>
       </div>
+      <Field label="Course description (optional)">
+        <Textarea
+          name="courseDescription"
+          placeholder="Per course notes. Line breaks are kept."
+          rows={4}
+          className="min-h-[6.5rem]"
+        />
+      </Field>
       <div className="grid gap-3">
         <span className="text-sm font-medium text-zinc-800">Intakes (select any that apply)</span>
         <div className="flex flex-wrap gap-6">

@@ -1,15 +1,35 @@
 import Link from "next/link";
-import { GraduationCap, LayoutDashboard, ListChecks, LogOut, School, UserPlus } from "lucide-react";
+import { GraduationCap, LayoutDashboard, ListChecks, LogOut, PlusCircle, School, UserPlus } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import type { UserRole } from "@/lib/database.types";
 
+type NavLink = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  subLabel?: string;
+};
+
 export function Sidebar({ user }: { user: { email: string; role: UserRole } }) {
-  const links = [
+  const links: NavLink[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/dashboard/students/new", label: "Add Student", icon: UserPlus },
     { href: "/dashboard/course-recommendations", label: "Match Student", icon: ListChecks },
-    ...(user.role === "admin" ? [{ href: "/dashboard/admin/universities", label: "Universities", icon: School }] : []),
+    ...(user.role === "admin"
+      ? ([
+          {
+            href: "/dashboard/admin/universities/add",
+            label: "Add university & course",
+            icon: PlusCircle,
+          },
+          {
+            href: "/dashboard/admin/universities/manage",
+            label: "Universities Management",
+            icon: School,
+          },
+        ] satisfies NavLink[])
+      : []),
   ];
 
   return (
@@ -28,9 +48,18 @@ export function Sidebar({ user }: { user: { email: string; role: UserRole } }) {
         {links.map((link) => {
           const Icon = link.icon;
           return (
-            <Link key={link.href} href={link.href} className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 hover:text-black">
-              <Icon size={17} />
-              {link.label}
+            <Link
+              key={link.href}
+              href={link.href}
+              className="flex items-start gap-3 rounded-md px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 hover:text-black"
+            >
+              <Icon size={17} className="mt-0.5 shrink-0" aria-hidden />
+              <span className="min-w-0 leading-snug">
+                <span className="block">{link.label}</span>
+                {link.subLabel ? (
+                  <span className="mt-0.5 block text-xs font-normal text-zinc-500">{link.subLabel}</span>
+                ) : null}
+              </span>
             </Link>
           );
         })}

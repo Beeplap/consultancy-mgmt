@@ -1,0 +1,63 @@
+import Link from "next/link";
+import { UniversityCourseForm } from "@/components/university-form";
+import { Button } from "@/components/ui/button";
+import { Field, Input, Textarea } from "@/components/ui/field";
+import { createUniversityAction } from "@/lib/actions/universities";
+import { universitiesAdminRoutes } from "@/lib/admin-universities-paths";
+import { requireRole } from "@/lib/auth";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+export default async function UniversitiesAddPage() {
+  await requireRole("admin");
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.from("universities").select("id, name").order("name", { nullsFirst: false });
+  const uniList = (data ?? []).map((u) => ({ id: u.id, name: u.name }));
+
+  return (
+    <div className="grid gap-7">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Add university &amp; course</h1>
+          <p className="mt-1 text-sm text-zinc-600">Create universities and attach courses—nothing is deleted here. Use Universities Management for the full catalogue.</p>
+        </div>
+        <Link
+          href={universitiesAdminRoutes.manage}
+          className="inline-flex h-10 shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-white px-4 text-sm font-medium text-black transition hover:bg-zinc-50"
+        >
+          Open Universities Management
+        </Link>
+      </div>
+
+      <section className="rounded-lg border border-zinc-200 bg-white p-6">
+        <h2 className="mb-4 text-lg font-semibold">Add university</h2>
+        <p className="mb-4 text-sm text-zinc-600">Create an empty university record, or add one while creating a course in the section below.</p>
+        <form action={createUniversityAction} className="grid gap-4">
+          <div className="grid gap-4 md:grid-cols-4 md:items-end">
+            <Field label="Name">
+              <Input name="name" />
+            </Field>
+            <Field label="UK city">
+              <Input name="location" />
+            </Field>
+            <Field label="Ranking">
+              <Input name="ranking" type="number" min="1" />
+            </Field>
+            <div className="flex justify-end md:justify-start">
+              <Button type="submit" variant="secondary" className="h-10">
+                Save university
+              </Button>
+            </div>
+          </div>
+          <Field label="Description (optional)">
+            <Textarea name="description" placeholder="Shown on Match Student when a course is expanded. Line breaks are kept." rows={4} />
+          </Field>
+        </form>
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 bg-white p-6">
+        <h2 className="mb-5 text-lg font-semibold">Add course to a university</h2>
+        <UniversityCourseForm universities={uniList} />
+      </section>
+    </div>
+  );
+}

@@ -33,6 +33,7 @@ create table if not exists public.universities (
   name text,
   location text,
   ranking integer,
+  description text,
   created_at timestamptz not null default now()
 );
 
@@ -51,6 +52,7 @@ create table if not exists public.courses (
   cas_deposit text not null default 'not_required' check (cas_deposit in ('not_required', 'required')),
   cas_deposit_amount integer,
   scholarship_upto integer,
+  description text,
   created_at timestamptz not null default now()
 );
 
@@ -103,6 +105,9 @@ alter table public.courses alter column fee drop not null;
 alter table public.courses add column if not exists accepted_gap text;
 alter table public.courses add column if not exists cas_deposit_amount integer;
 alter table public.courses add column if not exists scholarship_upto integer;
+
+alter table public.universities add column if not exists description text;
+alter table public.courses add column if not exists description text;
 
 do $$
 begin

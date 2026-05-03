@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { CourseEditForm } from "@/components/course-edit-form";
+import { universitiesAdminRoutes } from "@/lib/admin-universities-paths";
 import { requireRole } from "@/lib/auth";
 import type { Course, Intake } from "@/lib/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -28,11 +29,11 @@ export default async function EditCoursePage({ params }: PageProps) {
     <div className="mx-auto grid max-w-5xl gap-7 pb-12">
       <div>
         <Link
-          href="/dashboard/admin/universities"
+          href={universitiesAdminRoutes.manage}
           className="inline-flex items-center gap-2 text-sm font-medium text-zinc-600 hover:text-zinc-900"
         >
           <ArrowLeft size={16} aria-hidden />
-          Back to universities
+          Back to Universities Management
         </Link>
         <h1 className="mt-4 text-2xl font-semibold tracking-tight">Edit course</h1>
         <p className="mt-1 text-sm text-zinc-600">

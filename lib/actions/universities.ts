@@ -3,8 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { universitiesAdminRoutes } from "@/lib/admin-universities-paths";
 import type { CasDepositPolicy, IeltsWaiverPolicy, IntakeName, IntakeStatus } from "@/lib/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+function revalidateUniversitiesAdmin() {
+  revalidatePath(universitiesAdminRoutes.root);
+  revalidatePath(universitiesAdminRoutes.add);
+  revalidatePath(universitiesAdminRoutes.manage);
+}
 
 function required(formData: FormData, key: string) {
   const value = String(formData.get(key) ?? "").trim();
@@ -22,6 +29,15 @@ function optionalNumber(formData: FormData, key: string) {
   if (!raw) return null;
   const n = Number(raw);
   return Number.isFinite(n) ? n : null;
+}
+
+/** Preserves line breaks and internal spacing; empty / whitespace-only clears to null. */
+function optionalDescription(formData: FormData, key: string) {
+  const raw = formData.get(key);
+  if (raw === null || raw === undefined) return null;
+  const text = typeof raw === "string" ? raw : String(raw);
+  if (!text.trim()) return null;
+  return text;
 }
 
 const intakeNames: IntakeName[] = ["Jan", "May", "Sep"];
@@ -80,10 +96,12 @@ export async function createUniversityAction(formData: FormData) {
     name: optionalTrimmed(formData, "name"),
     location: optionalTrimmed(formData, "location"),
     ranking: optionalNumber(formData, "ranking"),
+    description: optionalDescription(formData, "description"),
   });
 
   if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/admin/universities");
+  revalidateUniversitiesAdmin();
+  revalidatePath("/dashboard/course-recommendations");
 }
 
 export async function updateUniversityAction(formData: FormData) {
@@ -96,11 +114,13 @@ export async function updateUniversityAction(formData: FormData) {
       name: optionalTrimmed(formData, "name"),
       location: optionalTrimmed(formData, "location"),
       ranking: optionalNumber(formData, "ranking"),
+      description: optionalDescription(formData, "description"),
     })
     .eq("id", universityId);
 
   if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/admin/universities");
+  revalidateUniversitiesAdmin();
+  revalidatePath("/dashboard/course-recommendations");
 }
 
 export async function createUniversityCourseAction(formData: FormData) {
@@ -117,6 +137,7 @@ export async function createUniversityCourseAction(formData: FormData) {
         name: optionalTrimmed(formData, "universityName"),
         location: optionalTrimmed(formData, "location"),
         ranking: optionalNumber(formData, "ranking"),
+        description: optionalDescription(formData, "universityDescription"),
       })
       .select("id")
       .single();
@@ -149,6 +170,7 @@ export async function createUniversityCourseAction(formData: FormData) {
       cas_deposit: casDepositRequired ? "required" : "not_required",
       cas_deposit_amount: casDepositRequired ? optionalNumber(formData, "cas_deposit_amount") : null,
       scholarship_upto: optionalNumber(formData, "scholarship_upto"),
+      description: optionalDescription(formData, "courseDescription"),
     })
     .select("id")
     .single();
@@ -170,7 +192,8 @@ export async function createUniversityCourseAction(formData: FormData) {
     if (intakeError) throw new Error(intakeError.message);
   }
 
-  revalidatePath("/dashboard/admin/universities");
+  revalidateUniversitiesAdmin();
+  revalidatePath("/dashboard/course-recommendations");
 }
 
 export async function updateUniversityCourseAction(formData: FormData) {
@@ -204,6 +227,7 @@ export async function updateUniversityCourseAction(formData: FormData) {
       cas_deposit: casDepositRequired ? "required" : "not_required",
       cas_deposit_amount: casDepositRequired ? optionalNumber(formData, "cas_deposit_amount") : null,
       scholarship_upto: optionalNumber(formData, "scholarship_upto"),
+      description: optionalDescription(formData, "courseDescription"),
     })
     .eq("id", courseId);
 
@@ -213,9 +237,10 @@ export async function updateUniversityCourseAction(formData: FormData) {
   const intakeStatus = (optionalTrimmed(formData, "intake_status") ?? "open") as IntakeStatus;
   await syncCourseIntakes(supabase, courseId, intakes, intakeStatus);
 
-  revalidatePath("/dashboard/admin/universities");
+  revalidateUniversitiesAdmin();
+  revalidatePath("/dashboard/course-recommendations");
   revalidatePath(`/dashboard/admin/universities/courses/${courseId}/edit`);
-  redirect("/dashboard/admin/universities");
+  redirect(universitiesAdminRoutes.manage);
 }
 
 export async function deleteCourseAction(formData: FormData) {
@@ -224,7 +249,8 @@ export async function deleteCourseAction(formData: FormData) {
   const courseId = required(formData, "courseId");
   const { error } = await supabase.from("courses").delete().eq("id", courseId);
   if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/admin/universities");
+  revalidateUniversitiesAdmin();
+  revalidatePath("/dashboard/course-recommendations");
 }
 
 export async function deleteUniversityAction(formData: FormData) {
@@ -233,5 +259,6 @@ export async function deleteUniversityAction(formData: FormData) {
   const universityId = required(formData, "universityId");
   const { error } = await supabase.from("universities").delete().eq("id", universityId);
   if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/admin/universities");
+  revalidateUniversitiesAdmin();
+  revalidatePath("/dashboard/course-recommendations");
 }
