@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import type { CasDepositPolicy, IeltsWaiverPolicy, IntakeName, IntakeStatus } from "@/lib/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -31,6 +32,45 @@ function selectedIntakes(formData: FormData): IntakeName[] {
     if (formData.get(`intake_${name}`) === "on") selected.push(name);
   }
   return selected;
+}
+
+async function syncCourseIntakes(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  courseId: string,
+  selected: IntakeName[],
+  intakeStatus: IntakeStatus,
+) {
+  const { data: existingData, error: fetchError } = await supabase.from("intakes").select("id, intake").eq("course_id", courseId);
+
+  if (fetchError) throw new Error(fetchError.message);
+
+  const existingRows = existingData ?? [];
+  const selectedSet = new Set(selected);
+
+  for (const row of existingRows) {
+    if (!selectedSet.has(row.intake as IntakeName)) {
+      const { error } = await supabase.from("intakes").delete().eq("id", row.id);
+      if (error) throw new Error(error.message);
+    }
+  }
+
+  const { data: currentData, error: fetch2Error } = await supabase.from("intakes").select("id, intake").eq("course_id", courseId);
+
+  if (fetch2Error) throw new Error(fetch2Error.message);
+
+  const current = currentData ?? [];
+  const byIntake = new Map(current.map((r) => [r.intake as IntakeName, r.id]));
+
+  for (const name of selected) {
+    const id = byIntake.get(name);
+    if (id) {
+      const { error } = await supabase.from("intakes").update({ status: intakeStatus }).eq("id", id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabase.from("intakes").insert({ course_id: courseId, intake: name, status: intakeStatus });
+      if (error) throw new Error(error.message);
+    }
+  }
 }
 
 export async function createUniversityAction(formData: FormData) {
@@ -133,10 +173,12 @@ export async function createUniversityCourseAction(formData: FormData) {
   revalidatePath("/dashboard/admin/universities");
 }
 
-export async function updateCourseAction(formData: FormData) {
+export async function updateUniversityCourseAction(formData: FormData) {
   await requireRole("admin");
   const supabase = await createSupabaseServerClient();
   const courseId = required(formData, "courseId");
+  const universityId = String(formData.get("university_id") ?? "").trim();
+  if (!universityId) throw new Error("University is required");
 
   const waiverRaw = optionalTrimmed(formData, "ielts_waiver");
   const casRaw = optionalTrimmed(formData, "cas_deposit") as CasDepositPolicy | null;
@@ -149,6 +191,7 @@ export async function updateCourseAction(formData: FormData) {
   const { error } = await supabase
     .from("courses")
     .update({
+      university_id: universityId,
       name: optionalTrimmed(formData, "courseName"),
       degree: optionalTrimmed(formData, "degree"),
       duration: optionalTrimmed(formData, "duration"),
@@ -165,17 +208,14 @@ export async function updateCourseAction(formData: FormData) {
     .eq("id", courseId);
 
   if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/admin/universities");
-}
 
-export async function updateIntakeStatusAction(formData: FormData) {
-  await requireRole("admin");
-  const supabase = await createSupabaseServerClient();
-  const intakeId = required(formData, "intakeId");
-  const status = required(formData, "status") as IntakeStatus;
-  const { error } = await supabase.from("intakes").update({ status }).eq("id", intakeId);
-  if (error) throw new Error(error.message);
+  const intakes = selectedIntakes(formData);
+  const intakeStatus = (optionalTrimmed(formData, "intake_status") ?? "open") as IntakeStatus;
+  await syncCourseIntakes(supabase, courseId, intakes, intakeStatus);
+
   revalidatePath("/dashboard/admin/universities");
+  revalidatePath(`/dashboard/admin/universities/courses/${courseId}/edit`);
+  redirect("/dashboard/admin/universities");
 }
 
 export async function deleteCourseAction(formData: FormData) {

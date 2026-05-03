@@ -5,21 +5,14 @@ import { Button } from "@/components/ui/button";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { Field, Input, Select } from "@/components/ui/field";
 import { IntakeBadge } from "@/components/ui/badge";
-import {
-  createUniversityAction,
-  deleteCourseAction,
-  deleteUniversityAction,
-  updateIntakeStatusAction,
-  updateUniversityAction,
-} from "@/lib/actions/universities";
+import { createUniversityAction, deleteUniversityAction, updateUniversityAction } from "@/lib/actions/universities";
 import { requireRole } from "@/lib/auth";
-import { currencyGBP, titleCase } from "@/lib/format";
-import type { Course, Intake, IntakeStatus, University } from "@/lib/database.types";
+import { currencyGBP } from "@/lib/format";
+import type { Course, Intake, University } from "@/lib/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type CourseRow = Course & { intakes: Intake[] };
 type UniversityRow = University & { courses: CourseRow[] };
-const intakeStatuses: IntakeStatus[] = ["open", "closing", "closed"];
 
 export default async function UniversitiesPage() {
   await requireRole("admin");
@@ -151,26 +144,19 @@ export default async function UniversitiesPage() {
                           {course.intakes.length === 0 ? (
                             <span className="text-zinc-400">—</span>
                           ) : (
-                            <div className="grid gap-2">
+                            <div className="flex flex-wrap gap-2">
                               {course.intakes.map((intake) => (
-                                <form key={intake.id} action={updateIntakeStatusAction} className="flex items-center gap-2">
-                                  <input type="hidden" name="intakeId" value={intake.id} />
-                                  <span className="w-10 font-medium">{intake.intake}</span>
+                                <span
+                                  key={intake.id}
+                                  className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs"
+                                >
+                                  <span className="font-medium">{intake.intake}</span>
                                   <IntakeBadge status={intake.status} />
-                                  <Select name="status" defaultValue={intake.status} className="h-9">
-                                    {intakeStatuses.map((status) => (
-                                      <option key={status} value={status}>
-                                        {titleCase(status)}
-                                      </option>
-                                    ))}
-                                  </Select>
-                                  <Button variant="secondary" className="h-9">
-                                    Save
-                                  </Button>
-                                </form>
+                                </span>
                               ))}
                             </div>
                           )}
+                          <p className="mt-2 text-xs text-zinc-400">Edit course to change intakes.</p>
                         </td>
                         <td className="px-4 py-4 align-top">
                           <CourseRowActions course={course} />

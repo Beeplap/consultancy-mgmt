@@ -86,26 +86,35 @@ export function UniversityCourseForm({ universities }: { universities: Universit
           <Input name="fee" type="number" placeholder="GBP" />
         </Field>
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2">
         <Field label="Accepted study gap">
           <Input name="accepted_gap" placeholder="e.g. Up to 2 years" />
         </Field>
-        <div className="grid gap-4">
-          <Field label="CAS deposit">
+        <Field label="Scholarship up to (£)">
+          <Input name="scholarship_upto" type="number" placeholder="Optional cap" />
+        </Field>
+      </div>
+      <div className="rounded-lg border border-zinc-200 bg-zinc-50/70 p-4 md:p-5">
+        <p className="mb-4 text-sm font-medium text-zinc-800">CAS deposit</p>
+        <div
+          className={
+            casDeposit === "required"
+              ? "grid gap-5 sm:grid-cols-2 sm:gap-8 sm:items-start"
+              : "max-w-md"
+          }
+        >
+          <Field label="Requirement">
             <Select name="cas_deposit" value={casDeposit} onChange={(e) => setCasDeposit(e.target.value as "not_required" | "required")}>
               <option value="not_required">Not required</option>
               <option value="required">Required</option>
             </Select>
           </Field>
           {casDeposit === "required" ? (
-            <Field label="CAS deposit amount (£)">
-              <Input name="cas_deposit_amount" type="number" min="0" placeholder="Optional amount in GBP" />
+            <Field label="Deposit amount (£)">
+              <Input name="cas_deposit_amount" type="number" min="0" placeholder="e.g. 6500" />
             </Field>
           ) : null}
         </div>
-        <Field label="Scholarship up to (£)">
-          <Input name="scholarship_upto" type="number" placeholder="Optional cap" />
-        </Field>
       </div>
       <div className="grid gap-3">
         <span className="text-sm font-medium text-zinc-800">Intakes (select any that apply)</span>
