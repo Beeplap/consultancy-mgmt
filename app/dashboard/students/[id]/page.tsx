@@ -64,7 +64,7 @@ export default async function StudentDetailPage({ params }: PageProps) {
                 <tr>
                   <th className="px-5 py-3 font-medium">University</th>
                   <th className="px-5 py-3 font-medium">Course</th>
-                  <th className="px-5 py-3 font-medium">Tuition</th>
+                  <th className="px-5 py-3 font-medium">Fee</th>
                   <th className="px-5 py-3 font-medium">Intake</th>
                   <th className="px-5 py-3 font-medium">Match</th>
                 </tr>
@@ -80,7 +80,7 @@ export default async function StudentDetailPage({ params }: PageProps) {
                       <p>{recommendation.course.name}</p>
                       <p className="text-xs text-zinc-500">{recommendation.course.degree} · {recommendation.course.duration}</p>
                     </td>
-                    <td className="px-5 py-4">{currencyGBP(recommendation.course.tuition_fee)}</td>
+                    <td className="px-5 py-4">{currencyGBP(recommendation.course.fee)}</td>
                     <td className="px-5 py-4">
                       <p className="mb-1 font-medium">{recommendation.intake.intake}</p>
                       <IntakeBadge status={recommendation.intake.status} />

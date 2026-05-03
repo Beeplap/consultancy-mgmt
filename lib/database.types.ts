@@ -4,6 +4,7 @@ export type IntakeName = "Jan" | "May" | "Sep";
 export type IntakeStatus = "open" | "closed" | "closing";
 export type EnglishGrade = "A+" | "A" | "B+" | "B" | "C+" | "C" | "D" | "E";
 export type IeltsWaiverPolicy = "none" | "b_or_above" | "c_plus_limited";
+export type CasDepositPolicy = "not_required" | "required";
 
 export type UserProfile = {
   id: string;
@@ -35,8 +36,8 @@ export type Student = {
 
 export type University = {
   id: string;
-  name: string;
-  location: string;
+  name: string | null;
+  location: string | null;
   ranking: number | null;
   created_at?: string;
 };
@@ -44,14 +45,17 @@ export type University = {
 export type Course = {
   id: string;
   university_id: string;
-  name: string;
-  degree: string;
-  duration: string;
-  field: string;
-  min_gpa: number;
-  min_ielts: number;
-  ielts_waiver: IeltsWaiverPolicy;
-  tuition_fee: number;
+  name: string | null;
+  degree: string | null;
+  duration: string | null;
+  field: string | null;
+  min_gpa: number | null;
+  min_ielts: number | null;
+  ielts_waiver: IeltsWaiverPolicy | null;
+  fee: number | null;
+  accepted_gap: string | null;
+  cas_deposit: CasDepositPolicy;
+  scholarship_upto: number | null;
   created_at?: string;
 };
 

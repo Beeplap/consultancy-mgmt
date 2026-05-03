@@ -30,8 +30,8 @@ create table if not exists public.students (
 
 create table if not exists public.universities (
   id uuid primary key default gen_random_uuid(),
-  name text not null,
-  location text not null,
+  name text,
+  location text,
   ranking integer,
   created_at timestamptz not null default now()
 );
@@ -39,14 +39,17 @@ create table if not exists public.universities (
 create table if not exists public.courses (
   id uuid primary key default gen_random_uuid(),
   university_id uuid not null references public.universities(id) on delete cascade,
-  name text not null,
-  degree text not null,
-  duration text not null,
-  field text not null,
-  min_gpa numeric not null,
-  min_ielts numeric not null,
-  ielts_waiver text not null default 'none' check (ielts_waiver in ('none', 'b_or_above', 'c_plus_limited')),
-  tuition_fee integer not null,
+  name text,
+  degree text,
+  duration text,
+  field text,
+  min_gpa numeric,
+  min_ielts numeric,
+  ielts_waiver text default 'none' check (ielts_waiver is null or ielts_waiver in ('none', 'b_or_above', 'c_plus_limited')),
+  fee integer,
+  accepted_gap text,
+  cas_deposit text not null default 'not_required' check (cas_deposit in ('not_required', 'required')),
+  scholarship_upto integer,
   created_at timestamptz not null default now()
 );
 
@@ -69,6 +72,48 @@ create table if not exists public.applications (
   status text not null default 'new' check (status in ('new', 'applied', 'offer', 'visa', 'enrolled')),
   created_at timestamptz not null default now()
 );
+
+-- --- Migrations for existing databases (idempotent) ---
+
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'courses' and column_name = 'tuition_fee'
+  ) then
+    alter table public.courses rename column tuition_fee to fee;
+  end if;
+end $$;
+
+alter table public.courses add column if not exists ielts_waiver text default 'none';
+
+alter table public.universities alter column name drop not null;
+alter table public.universities alter column location drop not null;
+
+alter table public.courses alter column name drop not null;
+alter table public.courses alter column degree drop not null;
+alter table public.courses alter column duration drop not null;
+alter table public.courses alter column field drop not null;
+alter table public.courses alter column min_gpa drop not null;
+alter table public.courses alter column min_ielts drop not null;
+alter table public.courses alter column ielts_waiver drop not null;
+alter table public.courses alter column fee drop not null;
+
+alter table public.courses add column if not exists accepted_gap text;
+alter table public.courses add column if not exists scholarship_upto integer;
+
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'courses' and column_name = 'cas_deposit'
+  ) then
+    alter table public.courses add column cas_deposit text not null default 'not_required'
+      check (cas_deposit in ('not_required', 'required'));
+  end if;
+end $$;
+
+alter table public.courses alter column cas_deposit set default 'not_required';
 
 create or replace function public.current_user_role()
 returns text

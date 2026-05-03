@@ -1,4 +1,5 @@
-export function currencyGBP(value: number) {
+export function currencyGBP(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "—";
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",

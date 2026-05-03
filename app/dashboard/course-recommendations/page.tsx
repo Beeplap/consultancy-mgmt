@@ -26,12 +26,14 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
     .from("courses")
     .select("*, universities(*), intakes!inner(*)")
     .neq("intakes.status", "closed")
-    .order("tuition_fee", { ascending: true });
+    .order("fee", { ascending: true, nullsFirst: false });
 
-  if (criteria.gpa !== undefined) query = query.lte("min_gpa", criteria.gpa);
-  if (criteria.budget !== undefined) query = query.lte("tuition_fee", criteria.budget);
+  if (criteria.gpa !== undefined) query = query.or(`min_gpa.is.null,min_gpa.lte.${criteria.gpa}`);
+  if (criteria.budget !== undefined) query = query.or(`fee.is.null,fee.lte.${criteria.budget}`);
   if (criteria.intake) query = query.eq("intakes.intake", criteria.intake);
-  if (!criteria.applyWithWaiver && criteria.ielts !== undefined) query = query.lte("min_ielts", criteria.ielts);
+  if (!criteria.applyWithWaiver && criteria.ielts !== undefined) {
+    query = query.or(`min_ielts.is.null,min_ielts.lte.${criteria.ielts}`);
+  }
   if (criteria.applyWithWaiver) query = query.neq("ielts_waiver", "none");
 
   const { data: courses = [], error } = await query;
@@ -62,7 +64,7 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
                 <th className="px-4 py-2 font-medium">Course</th>
                 <th className="px-4 py-2 font-medium">Req.</th>
                 <th className="px-4 py-2 font-medium">Waiver</th>
-                <th className="px-4 py-2 font-medium">Tuition</th>
+                <th className="px-4 py-2 font-medium">Fee</th>
                 <th className="px-4 py-2 font-medium">Intake</th>
                 <th className="px-4 py-2 font-medium">Match</th>
               </tr>
@@ -79,12 +81,12 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
                     <p className="text-xs text-zinc-500">{recommendation.course.degree} · {recommendation.course.duration} · {recommendation.course.field}</p>
                   </td>
                   <td className="px-4 py-3">
-                    GPA {recommendation.course.min_gpa}
+                    GPA {recommendation.course.min_gpa ?? "—"}
                     <br />
-                    IELTS {recommendation.course.min_ielts}
+                    IELTS {recommendation.course.min_ielts ?? "—"}
                   </td>
                   <td className="px-4 py-3">{formatWaiver(recommendation.course.ielts_waiver)}</td>
-                  <td className="px-4 py-3">{currencyGBP(recommendation.course.tuition_fee)}</td>
+                  <td className="px-4 py-3">{currencyGBP(recommendation.course.fee)}</td>
                   <td className="px-4 py-3">
                     <p className="mb-1 font-medium">{recommendation.intake.intake}</p>
                     <IntakeBadge status={recommendation.intake.status} />
@@ -132,7 +134,9 @@ function filterCoursePreference(courses: CourseWithUniversity[], preference?: st
   if (!preference) return courses;
 
   const query = preference.toLowerCase();
-  return courses.filter((course) => `${course.name} ${course.field} ${course.degree}`.toLowerCase().includes(query));
+  return courses.filter((course) =>
+    `${course.name ?? ""} ${course.field ?? ""} ${course.degree ?? ""}`.toLowerCase().includes(query),
+  );
 }
 
 function formatWaiver(value: CourseWithUniversity["ielts_waiver"]) {
