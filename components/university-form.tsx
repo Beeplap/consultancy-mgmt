@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { createUniversityCourseAction } from "@/lib/actions/universities";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/field";
@@ -5,11 +8,15 @@ import { Field, Input, Select } from "@/components/ui/field";
 type UniversityOption = { id: string; name: string | null };
 
 export function UniversityCourseForm({ universities }: { universities: UniversityOption[] }) {
+  const [universityId, setUniversityId] = useState("");
+  const [casDeposit, setCasDeposit] = useState<"not_required" | "required">("not_required");
+  const isNewUniversity = universityId === "";
+
   return (
     <form action={createUniversityCourseAction} className="grid gap-5">
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="University">
-          <Select name="university_id" defaultValue="">
+          <Select name="university_id" value={universityId} onChange={(e) => setUniversityId(e.target.value)}>
             <option value="">New university (fill details below)</option>
             {universities.map((u) => (
               <option key={u.id} value={u.id}>
@@ -19,18 +26,26 @@ export function UniversityCourseForm({ universities }: { universities: Universit
           </Select>
         </Field>
       </div>
-      <p className="text-xs text-zinc-500">All fields are optional. Choose an existing university or leave “New university” and enter details to create one.</p>
-      <div className="grid gap-4 md:grid-cols-3">
-        <Field label="University name">
-          <Input name="universityName" placeholder="Only used for new university" />
-        </Field>
-        <Field label="UK city">
-          <Input name="location" placeholder="Only used for new university" />
-        </Field>
-        <Field label="Ranking">
-          <Input name="ranking" type="number" min="1" />
-        </Field>
-      </div>
+      {isNewUniversity ? (
+        <>
+          <p className="text-xs text-zinc-500">
+            All fields are optional. Add university details below if you are creating a new record; otherwise leave blank.
+          </p>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Field label="University name">
+              <Input name="universityName" placeholder="New university" />
+            </Field>
+            <Field label="UK city">
+              <Input name="location" placeholder="e.g. Liverpool" />
+            </Field>
+            <Field label="Ranking">
+              <Input name="ranking" type="number" min="1" />
+            </Field>
+          </div>
+        </>
+      ) : (
+        <p className="text-xs text-zinc-500">This course will be added to the university you selected above.</p>
+      )}
       <div className="grid gap-4 md:grid-cols-4">
         <Field label="Course">
           <Input name="courseName" />
@@ -75,12 +90,19 @@ export function UniversityCourseForm({ universities }: { universities: Universit
         <Field label="Accepted study gap">
           <Input name="accepted_gap" placeholder="e.g. Up to 2 years" />
         </Field>
-        <Field label="CAS deposit">
-          <Select name="cas_deposit" defaultValue="not_required">
-            <option value="not_required">Not required</option>
-            <option value="required">Required</option>
-          </Select>
-        </Field>
+        <div className="grid gap-4">
+          <Field label="CAS deposit">
+            <Select name="cas_deposit" value={casDeposit} onChange={(e) => setCasDeposit(e.target.value as "not_required" | "required")}>
+              <option value="not_required">Not required</option>
+              <option value="required">Required</option>
+            </Select>
+          </Field>
+          {casDeposit === "required" ? (
+            <Field label="CAS deposit amount (£)">
+              <Input name="cas_deposit_amount" type="number" min="0" placeholder="Optional amount in GBP" />
+            </Field>
+          ) : null}
+        </div>
         <Field label="Scholarship up to (£)">
           <Input name="scholarship_upto" type="number" placeholder="Optional cap" />
         </Field>

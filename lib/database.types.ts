@@ -55,6 +55,7 @@ export type Course = {
   fee: number | null;
   accepted_gap: string | null;
   cas_deposit: CasDepositPolicy;
+  cas_deposit_amount: number | null;
   scholarship_upto: number | null;
   created_at?: string;
 };

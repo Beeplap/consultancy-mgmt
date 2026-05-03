@@ -87,6 +87,7 @@ export async function createUniversityCourseAction(formData: FormData) {
 
   const waiverRaw = optionalTrimmed(formData, "ielts_waiver");
   const casRaw = optionalTrimmed(formData, "cas_deposit") as CasDepositPolicy | null;
+  const casDepositRequired = casRaw === "required";
   const ieltsWaiver =
     waiverRaw && (waiverRaw === "none" || waiverRaw === "b_or_above" || waiverRaw === "c_plus_limited")
       ? (waiverRaw as IeltsWaiverPolicy)
@@ -105,7 +106,8 @@ export async function createUniversityCourseAction(formData: FormData) {
       ielts_waiver: ieltsWaiver,
       fee: optionalNumber(formData, "fee"),
       accepted_gap: optionalTrimmed(formData, "accepted_gap"),
-      cas_deposit: casRaw === "required" ? "required" : "not_required",
+      cas_deposit: casDepositRequired ? "required" : "not_required",
+      cas_deposit_amount: casDepositRequired ? optionalNumber(formData, "cas_deposit_amount") : null,
       scholarship_upto: optionalNumber(formData, "scholarship_upto"),
     })
     .select("id")
@@ -128,6 +130,41 @@ export async function createUniversityCourseAction(formData: FormData) {
     if (intakeError) throw new Error(intakeError.message);
   }
 
+  revalidatePath("/dashboard/admin/universities");
+}
+
+export async function updateCourseAction(formData: FormData) {
+  await requireRole("admin");
+  const supabase = await createSupabaseServerClient();
+  const courseId = required(formData, "courseId");
+
+  const waiverRaw = optionalTrimmed(formData, "ielts_waiver");
+  const casRaw = optionalTrimmed(formData, "cas_deposit") as CasDepositPolicy | null;
+  const casDepositRequired = casRaw === "required";
+  const ieltsWaiver =
+    waiverRaw && (waiverRaw === "none" || waiverRaw === "b_or_above" || waiverRaw === "c_plus_limited")
+      ? (waiverRaw as IeltsWaiverPolicy)
+      : null;
+
+  const { error } = await supabase
+    .from("courses")
+    .update({
+      name: optionalTrimmed(formData, "courseName"),
+      degree: optionalTrimmed(formData, "degree"),
+      duration: optionalTrimmed(formData, "duration"),
+      field: optionalTrimmed(formData, "field"),
+      min_gpa: optionalNumber(formData, "min_gpa"),
+      min_ielts: optionalNumber(formData, "min_ielts"),
+      ielts_waiver: ieltsWaiver,
+      fee: optionalNumber(formData, "fee"),
+      accepted_gap: optionalTrimmed(formData, "accepted_gap"),
+      cas_deposit: casDepositRequired ? "required" : "not_required",
+      cas_deposit_amount: casDepositRequired ? optionalNumber(formData, "cas_deposit_amount") : null,
+      scholarship_upto: optionalNumber(formData, "scholarship_upto"),
+    })
+    .eq("id", courseId);
+
+  if (error) throw new Error(error.message);
   revalidatePath("/dashboard/admin/universities");
 }
 

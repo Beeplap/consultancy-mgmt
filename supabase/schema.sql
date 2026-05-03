@@ -49,6 +49,7 @@ create table if not exists public.courses (
   fee integer,
   accepted_gap text,
   cas_deposit text not null default 'not_required' check (cas_deposit in ('not_required', 'required')),
+  cas_deposit_amount integer,
   scholarship_upto integer,
   created_at timestamptz not null default now()
 );
@@ -100,6 +101,7 @@ alter table public.courses alter column ielts_waiver drop not null;
 alter table public.courses alter column fee drop not null;
 
 alter table public.courses add column if not exists accepted_gap text;
+alter table public.courses add column if not exists cas_deposit_amount integer;
 alter table public.courses add column if not exists scholarship_upto integer;
 
 do $$

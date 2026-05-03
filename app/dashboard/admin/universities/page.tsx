@@ -1,4 +1,5 @@
 import { MoreVertical, Trash2 } from "lucide-react";
+import { CourseRowActions } from "@/components/course-row-actions";
 import { UniversityCourseForm } from "@/components/university-form";
 import { Button } from "@/components/ui/button";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
@@ -13,7 +14,7 @@ import {
 } from "@/lib/actions/universities";
 import { requireRole } from "@/lib/auth";
 import { currencyGBP, titleCase } from "@/lib/format";
-import type { Course, CasDepositPolicy, Intake, IntakeStatus, University } from "@/lib/database.types";
+import type { Course, Intake, IntakeStatus, University } from "@/lib/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type CourseRow = Course & { intakes: Intake[] };
@@ -123,7 +124,7 @@ export default async function UniversitiesPage() {
                       <th className="px-4 py-3 font-medium">CAS</th>
                       <th className="px-4 py-3 font-medium">Scholarship</th>
                       <th className="px-4 py-3 font-medium">Intakes</th>
-                      <th className="px-4 py-3 font-medium">Delete</th>
+                      <th className="px-4 py-3 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
@@ -144,7 +145,7 @@ export default async function UniversitiesPage() {
                         </td>
                         <td className="px-4 py-4">{currencyGBP(course.fee)}</td>
                         <td className="px-4 py-4 text-zinc-700">{course.accepted_gap?.trim() || "—"}</td>
-                        <td className="px-4 py-4">{formatCasDeposit(course.cas_deposit)}</td>
+                        <td className="px-4 py-4">{formatCasDeposit(course)}</td>
                         <td className="px-4 py-4">{course.scholarship_upto != null ? `Up to ${currencyGBP(course.scholarship_upto)}` : "—"}</td>
                         <td className="px-4 py-4">
                           {course.intakes.length === 0 ? (
@@ -171,14 +172,8 @@ export default async function UniversitiesPage() {
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-4">
-                          <form action={deleteCourseAction}>
-                            <input type="hidden" name="courseId" value={course.id} />
-                            <ConfirmSubmitButton message={`Delete ${course.name ?? "this course"}?`} className="h-9">
-                              <Trash2 size={15} />
-                              Delete
-                            </ConfirmSubmitButton>
-                          </form>
+                        <td className="px-4 py-4 align-top">
+                          <CourseRowActions course={course} />
                         </td>
                       </tr>
                     ))}
@@ -200,7 +195,8 @@ function formatWaiver(value: Course["ielts_waiver"]) {
   return "—";
 }
 
-function formatCasDeposit(value: CasDepositPolicy) {
-  if (value === "required") return "Required";
-  return "Not required";
+function formatCasDeposit(course: Pick<Course, "cas_deposit" | "cas_deposit_amount">) {
+  if (course.cas_deposit !== "required") return "Not required";
+  if (course.cas_deposit_amount != null) return `Required (${currencyGBP(course.cas_deposit_amount)})`;
+  return "Required";
 }
