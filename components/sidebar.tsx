@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { GraduationCap, LayoutDashboard, LogOut, School, UserPlus } from "lucide-react";
+import { GraduationCap, LayoutDashboard, ListChecks, LogOut, School, UserPlus } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import type { UserRole } from "@/lib/database.types";
@@ -8,6 +8,7 @@ export function Sidebar({ user }: { user: { email: string; role: UserRole } }) {
   const links = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/dashboard/students/new", label: "Add Student", icon: UserPlus },
+    { href: "/dashboard/course-recommendations", label: "Match Student", icon: ListChecks },
     ...(user.role === "admin" ? [{ href: "/dashboard/admin/universities", label: "Universities", icon: School }] : []),
   ];
 
