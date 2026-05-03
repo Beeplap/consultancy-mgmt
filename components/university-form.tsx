@@ -22,7 +22,7 @@ export function UniversityCourseForm({
   const isNewUniversity = universityId === "";
 
   return (
-    <form action={createUniversityCourseAction} encType="multipart/form-data" className="grid gap-5">
+    <form action={createUniversityCourseAction} className="grid gap-5">
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="University">
           <Select name="university_id" value={universityId} onChange={(e) => setUniversityId(e.target.value)}>

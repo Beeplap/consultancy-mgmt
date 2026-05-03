@@ -34,7 +34,7 @@ export default async function UniversitiesAddPage() {
       <section className="rounded-lg border border-zinc-200 bg-white p-6">
         <h2 className="mb-4 text-lg font-semibold">Add university</h2>
         <p className="mb-4 text-sm text-zinc-600">Create an empty university record, or add one while creating a course in the section below.</p>
-        <form action={createUniversityAction} encType="multipart/form-data" className="grid gap-4">
+        <form action={createUniversityAction} className="grid gap-4">
           <div className="grid gap-4 md:grid-cols-4 md:items-end">
             <Field label="Name">
               <Input name="name" />

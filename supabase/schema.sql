@@ -193,45 +193,6 @@ create policy "staff can manage applications" on public.applications for all to 
 create policy "staff can read custom catalog presets" on public.custom_catalog_presets for select to authenticated using (true);
 create policy "admins can manage custom catalog presets" on public.custom_catalog_presets for all to authenticated using (public.current_user_role() = 'admin') with check (public.current_user_role() = 'admin');
 
-/*
-  --- Storage: university hero images ---
-  Recommended bucket ID/name: university-covers (public reads; admin uploads only).
-
-  Create or update bucket (run in Supabase SQL editor once):
-
-insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values (
-  'university-covers',
-  'university-covers',
-  true,
-  2097152,
-  array['image/jpeg','image/jpg','image/png','image/webp','image/gif']
-)
-on conflict (id) do update set
-  public = excluded.public,
-  file_size_limit = excluded.file_size_limit,
-  allowed_mime_types = excluded.allowed_mime_types;
-
-  Policies on storage.objects (drop/recreate names if rerunning):
-
-drop policy if exists "Public read university covers" on storage.objects;
-create policy "Public read university covers"
-  on storage.objects for select to public
-  using (bucket_id = 'university-covers');
-
-drop policy if exists "Admins upload university covers" on storage.objects;
-create policy "Admins upload university covers"
-  on storage.objects for insert to authenticated
-  with check (bucket_id = 'university-covers' and public.current_user_role() = 'admin');
-
-drop policy if exists "Admins update university covers" on storage.objects;
-create policy "Admins update university covers"
-  on storage.objects for update to authenticated
-  using (bucket_id = 'university-covers' and public.current_user_role() = 'admin')
-  with check (bucket_id = 'university-covers' and public.current_user_role() = 'admin');
-
-drop policy if exists "Admins delete university covers" on storage.objects;
-create policy "Admins delete university covers"
-  on storage.objects for delete to authenticated
-  using (bucket_id = 'university-covers' and public.current_user_role() = 'admin');
-*/
+-- Storage bucket + RLS for university cover uploads (requires public.current_user_role() / public.users — see schema above).
+-- If you created the bucket in the Dashboard only, you still must apply policies or uploads fail with row-level security errors.
+-- Run the full SQL in: supabase/storage-university-covers.sql (Supabase → SQL Editor).
