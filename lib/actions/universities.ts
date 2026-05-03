@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { universitiesAdminRoutes } from "@/lib/admin-universities-paths";
+import { persistCourseCatalogSuggestions } from "@/lib/catalog-custom-presets";
 import type { CasDepositPolicy, IeltsWaiverPolicy, IntakeName, IntakeStatus } from "@/lib/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -192,6 +193,13 @@ export async function createUniversityCourseAction(formData: FormData) {
     if (intakeError) throw new Error(intakeError.message);
   }
 
+  await persistCourseCatalogSuggestions(supabase, {
+    courseName: optionalTrimmed(formData, "courseName"),
+    degree: optionalTrimmed(formData, "degree"),
+    duration: optionalTrimmed(formData, "duration"),
+    field: optionalTrimmed(formData, "field"),
+  });
+
   revalidateUniversitiesAdmin();
   revalidatePath("/dashboard/course-recommendations");
 }
@@ -236,6 +244,13 @@ export async function updateUniversityCourseAction(formData: FormData) {
   const intakes = selectedIntakes(formData);
   const intakeStatus = (optionalTrimmed(formData, "intake_status") ?? "open") as IntakeStatus;
   await syncCourseIntakes(supabase, courseId, intakes, intakeStatus);
+
+  await persistCourseCatalogSuggestions(supabase, {
+    courseName: optionalTrimmed(formData, "courseName"),
+    degree: optionalTrimmed(formData, "degree"),
+    duration: optionalTrimmed(formData, "duration"),
+    field: optionalTrimmed(formData, "field"),
+  });
 
   revalidateUniversitiesAdmin();
   revalidatePath("/dashboard/course-recommendations");

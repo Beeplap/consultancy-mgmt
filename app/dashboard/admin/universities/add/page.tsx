@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { createUniversityAction } from "@/lib/actions/universities";
 import { universitiesAdminRoutes } from "@/lib/admin-universities-paths";
+import { fetchMergedCatalogPresetLists } from "@/lib/catalog-custom-presets";
 import { requireRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -12,6 +13,7 @@ export default async function UniversitiesAddPage() {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.from("universities").select("id, name").order("name", { nullsFirst: false });
   const uniList = (data ?? []).map((u) => ({ id: u.id, name: u.name }));
+  const mergedPresets = await fetchMergedCatalogPresetLists(supabase);
 
   return (
     <div className="grid gap-7">
@@ -55,8 +57,12 @@ export default async function UniversitiesAddPage() {
       </section>
 
       <section className="rounded-lg border border-zinc-200 bg-white p-6">
-        <h2 className="mb-5 text-lg font-semibold">Add course to a university</h2>
-        <UniversityCourseForm universities={uniList} />
+        <h2 className="mb-2 text-lg font-semibold">Add course to a university</h2>
+        <p className="mb-5 text-xs text-zinc-500">
+          Course, degree, duration, and subject choices include built-in presets. Anything you submit that is typed manually (outside the preset list)
+          is stored and appears in pick lists next time—for everyone using this CRM.
+        </p>
+        <UniversityCourseForm universities={uniList} mergedPresets={mergedPresets} />
       </section>
     </div>
   );

@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { PresetOrManualField } from "@/components/preset-or-manual-field";
+import type { MergedCatalogPresetOptions } from "@/lib/catalog-custom-presets";
 import { updateUniversityCourseAction } from "@/lib/actions/universities";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
-import { COURSE_NAME_PRESETS, DEGREE_PRESETS, DURATION_PRESETS, STUDY_FIELD_PRESETS } from "@/lib/course-form-presets";
 import type { Course, Intake, IntakeName, IntakeStatus } from "@/lib/database.types";
 
 type UniversityOption = { id: string; name: string | null };
@@ -19,7 +19,15 @@ function defaultIntakeStatus(intakes: Intake[]): IntakeStatus {
   return sorted[0].status;
 }
 
-export function CourseEditForm({ course, universities }: { course: CourseWithIntakes; universities: UniversityOption[] }) {
+export function CourseEditForm({
+  course,
+  universities,
+  mergedPresets,
+}: {
+  course: CourseWithIntakes;
+  universities: UniversityOption[];
+  mergedPresets: MergedCatalogPresetOptions;
+}) {
   const [casDeposit, setCasDeposit] = useState<"not_required" | "required">(course.cas_deposit);
 
   return (
@@ -42,7 +50,7 @@ export function CourseEditForm({ course, universities }: { course: CourseWithInt
         <PresetOrManualField
           name="courseName"
           label="Course"
-          options={COURSE_NAME_PRESETS}
+          options={mergedPresets.coursePresets}
           defaultValue={course.name}
           placeholderPreset="Pick or search programme…"
           placeholderManual="Type course name exactly as shown"
@@ -50,7 +58,7 @@ export function CourseEditForm({ course, universities }: { course: CourseWithInt
         <PresetOrManualField
           name="degree"
           label="Degree"
-          options={DEGREE_PRESETS}
+          options={mergedPresets.degreePresets}
           defaultValue={course.degree}
           placeholderPreset="Pick or search degree type…"
           placeholderManual="Custom degree abbreviation"
@@ -58,7 +66,7 @@ export function CourseEditForm({ course, universities }: { course: CourseWithInt
         <PresetOrManualField
           name="duration"
           label="Duration"
-          options={DURATION_PRESETS}
+          options={mergedPresets.durationPresets}
           defaultValue={course.duration}
           placeholderPreset="Pick typical duration…"
           placeholderManual="e.g. 1 year"
@@ -66,7 +74,7 @@ export function CourseEditForm({ course, universities }: { course: CourseWithInt
         <PresetOrManualField
           name="field"
           label="Field"
-          options={STUDY_FIELD_PRESETS}
+          options={mergedPresets.fieldPresets}
           defaultValue={course.field}
           placeholderPreset="Pick subject area…"
           placeholderManual="e.g. IT, Business"

@@ -2,14 +2,20 @@
 
 import { useState } from "react";
 import { PresetOrManualField } from "@/components/preset-or-manual-field";
+import type { MergedCatalogPresetOptions } from "@/lib/catalog-custom-presets";
 import { createUniversityCourseAction } from "@/lib/actions/universities";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
-import { COURSE_NAME_PRESETS, DEGREE_PRESETS, DURATION_PRESETS, STUDY_FIELD_PRESETS } from "@/lib/course-form-presets";
 
 type UniversityOption = { id: string; name: string | null };
 
-export function UniversityCourseForm({ universities }: { universities: UniversityOption[] }) {
+export function UniversityCourseForm({
+  universities,
+  mergedPresets,
+}: {
+  universities: UniversityOption[];
+  mergedPresets: MergedCatalogPresetOptions;
+}) {
   const [universityId, setUniversityId] = useState("");
   const [casDeposit, setCasDeposit] = useState<"not_required" | "required">("not_required");
   const isNewUniversity = universityId === "";
@@ -59,28 +65,28 @@ export function UniversityCourseForm({ universities }: { universities: Universit
         <PresetOrManualField
           name="courseName"
           label="Course"
-          options={COURSE_NAME_PRESETS}
+          options={mergedPresets.coursePresets}
           placeholderPreset="Pick a programme or search…"
           placeholderManual="Type course name exactly as it should appear"
         />
         <PresetOrManualField
           name="degree"
           label="Degree"
-          options={DEGREE_PRESETS}
+          options={mergedPresets.degreePresets}
           placeholderPreset="Pick or search degree type…"
           placeholderManual="e.g. BSc (Hons)"
         />
         <PresetOrManualField
           name="duration"
           label="Duration"
-          options={DURATION_PRESETS}
+          options={mergedPresets.durationPresets}
           placeholderPreset="Pick typical duration…"
           placeholderManual="e.g. 1 year part-time"
         />
         <PresetOrManualField
           name="field"
           label="Field"
-          options={STUDY_FIELD_PRESETS}
+          options={mergedPresets.fieldPresets}
           placeholderPreset="Pick subject area…"
           placeholderManual="e.g. IT, Business"
         />

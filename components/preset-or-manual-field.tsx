@@ -4,6 +4,12 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import { Input } from "@/components/ui/field";
 import { groupByLetter } from "@/lib/course-form-presets";
 
+function findPresetMatch(options: readonly string[], raw: string | null | undefined) {
+  const t = (raw ?? "").trim().toLowerCase();
+  if (!t) return undefined;
+  return options.find((o) => o.trim().toLowerCase() === t);
+}
+
 export type PresetOrManualFieldProps = {
   name: string;
   label: string;
@@ -25,12 +31,13 @@ export function PresetOrManualField({
   const id = useId();
   const listboxId = `${id}-listbox`;
   const initialTrim = defaultValue?.trim() ?? "";
-  const notInPreset = Boolean(initialTrim && !options.includes(initialTrim));
+  const initialMatch = findPresetMatch(options, initialTrim);
+  const notInPreset = Boolean(initialTrim && !initialMatch);
 
   const [manual, setManual] = useState(notInPreset);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [presetChosen, setPresetChosen] = useState(notInPreset ? "" : initialTrim);
+  const [presetChosen, setPresetChosen] = useState(notInPreset ? "" : (initialMatch ?? initialTrim));
   const [manualKey, bumpManualKey] = useState(0);
 
   const rootRef = useRef<HTMLDivElement>(null);

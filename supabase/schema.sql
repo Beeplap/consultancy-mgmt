@@ -109,6 +109,16 @@ alter table public.courses add column if not exists scholarship_upto integer;
 alter table public.universities add column if not exists description text;
 alter table public.courses add column if not exists description text;
 
+create table if not exists public.custom_catalog_presets (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null check (kind in ('course_name', 'degree', 'duration', 'field')),
+  label text not null,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists custom_catalog_presets_kind_label_normalized
+  on public.custom_catalog_presets (kind, (lower(trim(label))));
+
 do $$
 begin
   if not exists (
@@ -157,6 +167,7 @@ alter table public.universities enable row level security;
 alter table public.courses enable row level security;
 alter table public.intakes enable row level security;
 alter table public.applications enable row level security;
+alter table public.custom_catalog_presets enable row level security;
 
 create policy "users can read own profile" on public.users for select to authenticated using (id = auth.uid() or public.current_user_role() = 'admin');
 create policy "admins can manage users" on public.users for all to authenticated using (public.current_user_role() = 'admin') with check (public.current_user_role() = 'admin');
@@ -176,3 +187,6 @@ create policy "admins can manage intakes" on public.intakes for all to authentic
 
 create policy "staff can read applications" on public.applications for select to authenticated using (true);
 create policy "staff can manage applications" on public.applications for all to authenticated using (public.current_user_role() in ('admin', 'counsellor')) with check (public.current_user_role() in ('admin', 'counsellor'));
+
+create policy "staff can read custom catalog presets" on public.custom_catalog_presets for select to authenticated using (true);
+create policy "admins can manage custom catalog presets" on public.custom_catalog_presets for all to authenticated using (public.current_user_role() = 'admin') with check (public.current_user_role() = 'admin');

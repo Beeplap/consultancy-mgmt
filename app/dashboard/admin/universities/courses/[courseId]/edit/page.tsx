@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { CourseEditForm } from "@/components/course-edit-form";
 import { universitiesAdminRoutes } from "@/lib/admin-universities-paths";
+import { fetchMergedCatalogPresetLists } from "@/lib/catalog-custom-presets";
 import { requireRole } from "@/lib/auth";
 import type { Course, Intake } from "@/lib/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -22,6 +23,7 @@ export default async function EditCoursePage({ params }: PageProps) {
 
   const { data: uniRows } = await supabase.from("universities").select("id, name").order("name", { nullsFirst: false });
   const universities = uniRows ?? [];
+  const mergedPresets = await fetchMergedCatalogPresetLists(supabase);
 
   const typedCourse = course as Course & { intakes: Intake[] };
 
@@ -42,7 +44,7 @@ export default async function EditCoursePage({ params }: PageProps) {
       </div>
 
       <section className="rounded-lg border border-zinc-200 bg-white p-6">
-        <CourseEditForm course={typedCourse} universities={universities} />
+        <CourseEditForm course={typedCourse} universities={universities} mergedPresets={mergedPresets} />
       </section>
     </div>
   );

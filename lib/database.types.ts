@@ -78,6 +78,15 @@ export type Application = {
   created_at?: string;
 };
 
+export type CustomCatalogPresetKind = "course_name" | "degree" | "duration" | "field";
+
+export type CustomCatalogPreset = {
+  id: string;
+  kind: CustomCatalogPresetKind;
+  label: string;
+  created_at?: string;
+};
+
 export type CourseWithUniversity = Course & {
   universities: University | null;
   intakes: Intake[];
@@ -120,6 +129,12 @@ export type Database = {
         Row: Application;
         Insert: Omit<Application, "id" | "created_at"> & { id?: string };
         Update: Partial<Omit<Application, "id" | "created_at">>;
+        Relationships: [];
+      };
+      custom_catalog_presets: {
+        Row: CustomCatalogPreset;
+        Insert: Omit<CustomCatalogPreset, "id" | "created_at"> & { id?: string };
+        Update: Partial<Omit<CustomCatalogPreset, "id" | "created_at">>;
         Relationships: [];
       };
     };

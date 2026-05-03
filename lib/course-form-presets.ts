@@ -1,4 +1,24 @@
-/** Alphabetical preset lists for add/edit course flows. */
+/** Built-in presets for course forms. Custom labels from `custom_catalog_presets` merge at runtime. */
+
+export function mergeBuiltInPresets(staticList: readonly string[], extraLabels: Iterable<string>): string[] {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+  for (const raw of staticList) {
+    const o = raw.trim();
+    const k = o.toLowerCase();
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    merged.push(o);
+  }
+  for (const raw of extraLabels) {
+    const o = String(raw ?? "").trim();
+    const k = o.toLowerCase();
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    merged.push(o);
+  }
+  return merged.sort((a, b) => a.localeCompare(b));
+}
 
 export const COURSE_NAME_PRESETS: readonly string[] = [
   "Accounting and Finance",
@@ -60,7 +80,6 @@ export const DEGREE_PRESETS: readonly string[] = [
   "Professional Doctorate",
 ].sort((a, b) => a.localeCompare(b));
 
-/** Ordered shortest → longest — letter jump still applies to first character. */
 export const DURATION_PRESETS: readonly string[] = [
   "3 months",
   "6 months",
