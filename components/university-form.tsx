@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { PresetOrManualField } from "@/components/preset-or-manual-field";
 import { createUniversityCourseAction } from "@/lib/actions/universities";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import { COURSE_NAME_PRESETS, DEGREE_PRESETS, DURATION_PRESETS, STUDY_FIELD_PRESETS } from "@/lib/course-form-presets";
 
 type UniversityOption = { id: string; name: string | null };
 
@@ -54,25 +56,34 @@ export function UniversityCourseForm({ universities }: { universities: Universit
         <p className="text-xs text-zinc-500">This course will be added to the university you selected above.</p>
       )}
       <div className="grid gap-4 md:grid-cols-4">
-        <Field label="Course">
-          <Input name="courseName" />
-        </Field>
-        <Field label="Degree">
-          <Select name="degree" defaultValue="">
-            <option value="">—</option>
-            <option>BSc</option>
-            <option>BA</option>
-            <option>BEng</option>
-            <option>MSc</option>
-            <option>MBA</option>
-          </Select>
-        </Field>
-        <Field label="Duration">
-          <Input name="duration" placeholder="e.g. 1 year" />
-        </Field>
-        <Field label="Field">
-          <Input name="field" placeholder="IT, Business, Health" />
-        </Field>
+        <PresetOrManualField
+          name="courseName"
+          label="Course"
+          options={COURSE_NAME_PRESETS}
+          placeholderPreset="Pick a programme or search…"
+          placeholderManual="Type course name exactly as it should appear"
+        />
+        <PresetOrManualField
+          name="degree"
+          label="Degree"
+          options={DEGREE_PRESETS}
+          placeholderPreset="Pick or search degree type…"
+          placeholderManual="e.g. BSc (Hons)"
+        />
+        <PresetOrManualField
+          name="duration"
+          label="Duration"
+          options={DURATION_PRESETS}
+          placeholderPreset="Pick typical duration…"
+          placeholderManual="e.g. 1 year part-time"
+        />
+        <PresetOrManualField
+          name="field"
+          label="Field"
+          options={STUDY_FIELD_PRESETS}
+          placeholderPreset="Pick subject area…"
+          placeholderManual="e.g. IT, Business"
+        />
       </div>
       <div className="grid gap-4 md:grid-cols-4">
         <Field label="Minimum GPA">

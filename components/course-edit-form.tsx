@@ -1,32 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { PresetOrManualField } from "@/components/preset-or-manual-field";
 import { updateUniversityCourseAction } from "@/lib/actions/universities";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import { COURSE_NAME_PRESETS, DEGREE_PRESETS, DURATION_PRESETS, STUDY_FIELD_PRESETS } from "@/lib/course-form-presets";
 import type { Course, Intake, IntakeName, IntakeStatus } from "@/lib/database.types";
 
 type UniversityOption = { id: string; name: string | null };
 type CourseWithIntakes = Course & { intakes: Intake[] };
 
-const standardDegrees = ["BSc", "BA", "BEng", "MSc", "MBA"];
 const intakeOrder: Record<IntakeName, number> = { Jan: 0, May: 1, Sep: 2 };
-
-function degreeSelectOptions(course: Course) {
-  const d = course.degree?.trim() ?? "";
-  const needsExtra = Boolean(d && !standardDegrees.includes(d));
-  return (
-    <>
-      <option value="">—</option>
-      {standardDegrees.map((opt) => (
-        <option key={opt} value={opt}>
-          {opt}
-        </option>
-      ))}
-      {needsExtra ? <option value={d}>{d}</option> : null}
-    </>
-  );
-}
 
 function defaultIntakeStatus(intakes: Intake[]): IntakeStatus {
   if (intakes.length === 0) return "open";
@@ -54,20 +39,38 @@ export function CourseEditForm({ course, universities }: { course: CourseWithInt
       <p className="text-xs text-zinc-500">Move this course to another university if needed. All fields remain optional.</p>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Field label="Course">
-          <Input name="courseName" defaultValue={course.name ?? ""} />
-        </Field>
-        <Field label="Degree">
-          <Select name="degree" defaultValue={course.degree ?? ""}>
-            {degreeSelectOptions(course)}
-          </Select>
-        </Field>
-        <Field label="Duration">
-          <Input name="duration" defaultValue={course.duration ?? ""} placeholder="e.g. 1 year" />
-        </Field>
-        <Field label="Field">
-          <Input name="field" defaultValue={course.field ?? ""} placeholder="IT, Business, Health" />
-        </Field>
+        <PresetOrManualField
+          name="courseName"
+          label="Course"
+          options={COURSE_NAME_PRESETS}
+          defaultValue={course.name}
+          placeholderPreset="Pick or search programme…"
+          placeholderManual="Type course name exactly as shown"
+        />
+        <PresetOrManualField
+          name="degree"
+          label="Degree"
+          options={DEGREE_PRESETS}
+          defaultValue={course.degree}
+          placeholderPreset="Pick or search degree type…"
+          placeholderManual="Custom degree abbreviation"
+        />
+        <PresetOrManualField
+          name="duration"
+          label="Duration"
+          options={DURATION_PRESETS}
+          defaultValue={course.duration}
+          placeholderPreset="Pick typical duration…"
+          placeholderManual="e.g. 1 year"
+        />
+        <PresetOrManualField
+          name="field"
+          label="Field"
+          options={STUDY_FIELD_PRESETS}
+          defaultValue={course.field}
+          placeholderPreset="Pick subject area…"
+          placeholderManual="e.g. IT, Business"
+        />
       </div>
       <div className="grid gap-4 md:grid-cols-4">
         <Field label="Minimum GPA">
