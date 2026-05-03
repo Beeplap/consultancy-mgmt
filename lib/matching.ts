@@ -1,9 +1,20 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CourseWithUniversity, Database, Intake, Student } from "@/lib/database.types";
+import type { CourseWithUniversity, Database, EnglishGrade, Intake, IntakeName, Student } from "@/lib/database.types";
 
 export type MatchingStudent = Student & {
   english_grade?: string | null;
   englishGrade?: string | null;
+};
+
+export type MatchingCriteria = {
+  gpa?: number;
+  englishGrade?: EnglishGrade | null;
+  applyWithWaiver?: boolean;
+  ielts?: number;
+  budget?: number;
+  intake?: IntakeName | "";
+  preferredCourse?: string;
+  preferredCity?: string;
 };
 
 export type IeltsWaiverStatus = "required" | "waived" | "limited";
@@ -16,15 +27,26 @@ export type Recommendation = {
 };
 
 const limitedWaiverMaxIeltsRequirement = 6;
+const gradeRank: Record<EnglishGrade, number> = {
+  E: 0,
+  D: 1,
+  C: 2,
+  "C+": 3,
+  B: 4,
+  "B+": 5,
+  A: 6,
+  "A+": 7,
+};
 
-function normalizeEnglishGrade(student: MatchingStudent) {
-  return (student.english_grade ?? student.englishGrade ?? "").trim().toUpperCase();
+function normalizeEnglishGrade(student: MatchingStudent | MatchingCriteria) {
+  const grade = "english_grade" in student ? student.english_grade ?? student.englishGrade : student.englishGrade;
+  return (grade ?? "").trim().toUpperCase() as EnglishGrade | "";
 }
 
-export function getIeltsWaiverStatus(student: MatchingStudent): IeltsWaiverStatus {
+export function getIeltsWaiverStatus(student: MatchingStudent | MatchingCriteria): IeltsWaiverStatus {
   const grade = normalizeEnglishGrade(student);
 
-  if (grade === "B" || grade === "B+" || grade === "A" || grade === "A+") {
+  if (grade && gradeRank[grade] >= gradeRank.B) {
     return "waived";
   }
 
@@ -35,46 +57,63 @@ export function getIeltsWaiverStatus(student: MatchingStudent): IeltsWaiverStatu
   return "required";
 }
 
-function effectiveIeltsScore(student: MatchingStudent) {
-  const waiver = getIeltsWaiverStatus(student);
+function effectiveIeltsScore(student: MatchingStudent | MatchingCriteria) {
+  const waiver = shouldApplyWithWaiver(student) ? getIeltsWaiverStatus(student) : "required";
+  const ielts = student.ielts ?? 0;
 
   if (waiver === "waived") return Number.POSITIVE_INFINITY;
-  if (waiver === "limited") return Math.max(student.ielts, limitedWaiverMaxIeltsRequirement);
+  if (waiver === "limited") return Math.max(ielts, limitedWaiverMaxIeltsRequirement);
 
-  return student.ielts;
+  return ielts;
 }
 
-function preferenceMatch(course: CourseWithUniversity, student: MatchingStudent) {
-  const preference = student.preferred_course.toLowerCase();
+function preferenceMatch(course: CourseWithUniversity, student: MatchingStudent | MatchingCriteria) {
+  const preference = ("preferred_course" in student ? student.preferred_course : student.preferredCourse ?? "").toLowerCase();
+  if (!preference) return 0.7;
+
   const haystack = `${course.name} ${course.field} ${course.degree}`.toLowerCase();
 
   return haystack.includes(preference) || preference.includes(course.field.toLowerCase()) ? 1 : 0.45;
 }
 
-function cityMatch(course: CourseWithUniversity, student: MatchingStudent) {
-  if (!student.preferred_city) return 0.7;
+function cityMatch(course: CourseWithUniversity, student: MatchingStudent | MatchingCriteria) {
+  const preferredCity = "preferred_city" in student ? student.preferred_city : student.preferredCity;
+  if (!preferredCity) return 0.7;
 
-  return course.universities?.location.toLowerCase().includes(student.preferred_city.toLowerCase()) ? 1 : 0.62;
+  return course.universities?.location.toLowerCase().includes(preferredCity.toLowerCase()) ? 1 : 0.62;
 }
 
-export function isCourseEligible(student: MatchingStudent, course: CourseWithUniversity, intake: Intake) {
+function acceptsWaiver(course: CourseWithUniversity, waiver: IeltsWaiverStatus) {
+  if (waiver === "waived") return course.ielts_waiver !== "none";
+  if (waiver === "limited") return course.ielts_waiver === "c_plus_limited";
+
+  return false;
+}
+
+function shouldApplyWithWaiver(student: MatchingStudent | MatchingCriteria) {
+  if ("applyWithWaiver" in student) return Boolean(student.applyWithWaiver);
+
+  return Boolean(normalizeEnglishGrade(student));
+}
+
+export function isCourseEligible(student: MatchingStudent | MatchingCriteria, course: CourseWithUniversity, intake: Intake) {
   if (intake.status === "closed") return false;
-  if (intake.intake !== student.intake) return false;
-  if (student.gpa < course.min_gpa) return false;
-  if (student.budget < course.tuition_fee) return false;
+  if (student.intake && intake.intake !== student.intake) return false;
+  if (student.gpa !== undefined && student.gpa < course.min_gpa) return false;
+  if (student.budget !== undefined && student.budget < course.tuition_fee) return false;
 
-  const waiver = getIeltsWaiverStatus(student);
-  if (waiver === "waived") return true;
-  if (waiver === "limited" && course.min_ielts <= limitedWaiverMaxIeltsRequirement) return true;
+  if (shouldApplyWithWaiver(student)) {
+    return acceptsWaiver(course, getIeltsWaiverStatus(student));
+  }
 
-  return student.ielts >= course.min_ielts;
+  return student.ielts !== undefined && student.ielts >= course.min_ielts;
 }
 
-export function calculateMatchScore(student: MatchingStudent, course: CourseWithUniversity, intake: Intake) {
+export function calculateMatchScore(student: MatchingStudent | MatchingCriteria, course: CourseWithUniversity, intake: Intake) {
   const ieltsScore = effectiveIeltsScore(student);
-  const gpaHeadroom = Math.min(1, Math.max(0, student.gpa - course.min_gpa) / 20);
+  const gpaHeadroom = Math.min(1, Math.max(0, (student.gpa ?? course.min_gpa) - course.min_gpa) / 20);
   const ieltsHeadroom = Number.isFinite(ieltsScore) ? Math.min(1, Math.max(0, ieltsScore - course.min_ielts) / 2) : 1;
-  const budgetHeadroom = Math.min(1, Math.max(0, student.budget - course.tuition_fee) / Math.max(course.tuition_fee, 1));
+  const budgetHeadroom = Math.min(1, Math.max(0, (student.budget ?? course.tuition_fee) - course.tuition_fee) / Math.max(course.tuition_fee, 1));
   const coursePreference = preferenceMatch(course, student);
   const cityPreference = cityMatch(course, student);
   const intakeWeight = intake.status === "open" ? 1 : 0.82;
@@ -92,17 +131,21 @@ export function calculateMatchScore(student: MatchingStudent, course: CourseWith
 }
 
 export function recommendCourses(student: MatchingStudent, courses: CourseWithUniversity[]): Recommendation[] {
+  return rankCourses(student, courses);
+}
+
+export function rankCourses(criteria: MatchingStudent | MatchingCriteria, courses: CourseWithUniversity[]): Recommendation[] {
   return courses
     .flatMap((course) => {
-      const intake = course.intakes.find((item) => item.intake === student.intake && item.status !== "closed");
-      if (!intake || !isCourseEligible(student, course, intake)) return [];
+      const intake = course.intakes.find((item) => (!criteria.intake || item.intake === criteria.intake) && item.status !== "closed");
+      if (!intake || !isCourseEligible(criteria, course, intake)) return [];
 
       return [
         {
           course,
           intake,
-          score: calculateMatchScore(student, course, intake),
-          ieltsWaiver: getIeltsWaiverStatus(student),
+          score: calculateMatchScore(criteria, course, intake),
+          ieltsWaiver: shouldApplyWithWaiver(criteria) ? getIeltsWaiverStatus(criteria) : "required",
         },
       ];
     })

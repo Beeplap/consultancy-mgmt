@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
-import type { IntakeName, IntakeStatus } from "@/lib/database.types";
+import type { IeltsWaiverPolicy, IntakeName, IntakeStatus } from "@/lib/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 function required(formData: FormData, key: string) {
@@ -43,6 +43,7 @@ export async function createUniversityCourseAction(formData: FormData) {
       field: required(formData, "field"),
       min_gpa: Number(required(formData, "min_gpa")),
       min_ielts: Number(required(formData, "min_ielts")),
+      ielts_waiver: required(formData, "ielts_waiver") as IeltsWaiverPolicy,
       tuition_fee: Number(required(formData, "tuition_fee")),
     })
     .select("id")

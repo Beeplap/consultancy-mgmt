@@ -45,6 +45,7 @@ create table if not exists public.courses (
   field text not null,
   min_gpa numeric not null,
   min_ielts numeric not null,
+  ielts_waiver text not null default 'none' check (ielts_waiver in ('none', 'b_or_above', 'c_plus_limited')),
   tuition_fee integer not null,
   created_at timestamptz not null default now()
 );
@@ -57,6 +58,9 @@ create table if not exists public.intakes (
   created_at timestamptz not null default now(),
   unique (course_id, intake)
 );
+
+alter table public.students add column if not exists english_grade text;
+alter table public.courses add column if not exists ielts_waiver text not null default 'none';
 
 create table if not exists public.applications (
   id uuid primary key default gen_random_uuid(),

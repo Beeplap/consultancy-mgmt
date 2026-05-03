@@ -62,7 +62,13 @@ export default async function UniversitiesPage() {
                           <p className="font-medium">{course.name}</p>
                           <p className="text-xs text-zinc-500">{course.degree} · {course.duration} · {course.field}</p>
                         </td>
-                        <td className="px-4 py-4">GPA {course.min_gpa}<br />IELTS {course.min_ielts}</td>
+                        <td className="px-4 py-4">
+                          GPA {course.min_gpa}
+                          <br />
+                          IELTS {course.min_ielts}
+                          <br />
+                          Waiver {formatWaiver(course.ielts_waiver)}
+                        </td>
                         <td className="px-4 py-4">{currencyGBP(course.tuition_fee)}</td>
                         <td className="px-4 py-4">
                           <div className="grid gap-2">
@@ -96,4 +102,10 @@ export default async function UniversitiesPage() {
       </section>
     </div>
   );
+}
+
+function formatWaiver(value: Course["ielts_waiver"]) {
+  if (value === "b_or_above") return "B or above";
+  if (value === "c_plus_limited") return "C+ limited";
+  return "No";
 }
