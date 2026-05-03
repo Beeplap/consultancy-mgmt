@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  COUNSELLOR
+}
+
+enum Qualification {
+  TWELFTH
+  BACHELOR
+}
+
+enum IntakeSeason {
+  JAN
+  MAY
+  SEP
+}
+
+enum IntakeStatus {
+  OPEN
+  CLOSED
+  CLOSING_SOON
+}
+
+enum ApplicationStatus {
+  NEW
+  APPLIED
+  OFFER
+  VISA
+  ENROLLED
+}
+
+enum DegreeType {
+  BSC
+  MSC
+  MBA
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(COUNSELLOR)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  students Student[]
+  notes    Note[]
+}
+
+model Student {
+  id                  String            @id @default(cuid())
+  name                String
+  email               String            @unique
+  phone               String
+  nationality         String
+  qualification       Qualification
+  gpa                 Float
+  backlogs            Int               @default(0)
+  academicYear        Int
+  englishTest         String            @default("IELTS")
+  englishScore        Float
+  courseInterest      String
+  budget              Int
+  preferredIntake     IntakeSeason
+  preferredCity       String?
+  scholarshipRequired Boolean           @default(false)
+  status              ApplicationStatus @default(NEW)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  counsellorId String?
+  counsellor   User? @relation(fields: [counsellorId], references: [id], onDelete: SetNull)
+
+  applications Application[]
+  notes        Note[]
+}
+
+model University {
+  id        String   @id @default(cuid())
+  name      String
+  location  String
+  ranking   Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  courses Course[]
+}
+
+model Course {
+  id         String     @id @default(cuid())
+  name       String
+  degreeType DegreeType
+  duration   String
+  field      String
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  universityId String
+  university   University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+
+  requirement  Requirement?
+  fee          Fee?
+  intakes      Intake[]
+  applications Application[]
+}
+
+model Requirement {
+  id         String @id @default(cuid())
+  minimumGpa Float
+  minimumIelts Float
+
+  courseId String @unique
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model Fee {
+  id                 String @id @default(cuid())
+  tuitionFee         Int
+  depositAmount      Int
+  initialDeposit     Int
+  installmentDetails String
+
+  courseId String @unique
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model Intake {
+  id     String       @id @default(cuid())
+  season IntakeSeason
+  status IntakeStatus @default(OPEN)
+
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  applications Application[]
+
+  @@unique([courseId, season])
+}
+
+model Application {
+  id          String            @id @default(cuid())
+  status      ApplicationStatus @default(NEW)
+  shortlisted Boolean           @default(false)
+  matchScore  Int
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  intakeId String
+  intake   Intake @relation(fields: [intakeId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseId, intakeId])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  body      String
+  createdAt DateTime @default(now())
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  authorId String?
+  author   User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+}
