@@ -4,8 +4,8 @@ import { Field, Select } from "@/components/ui/field";
 import { IntakeBadge, StatusBadge } from "@/components/ui/badge";
 import { updateStudentStatusAction } from "@/lib/actions/students";
 import { currencyGBP, titleCase } from "@/lib/format";
-import { recommendCourses } from "@/lib/matching";
-import type { CourseWithUniversity, Student, StudentStatus } from "@/lib/database.types";
+import { getRankedCourseRecommendations } from "@/lib/matching";
+import type { StudentStatus } from "@/lib/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type PageProps = {
@@ -22,17 +22,7 @@ export default async function StudentDetailPage({ params }: PageProps) {
 
   if (!student) notFound();
 
-  const { data: courses = [] } = await supabase
-    .from("courses")
-    .select("*, universities(*), intakes!inner(*)")
-    .lte("min_gpa", student.gpa)
-    .lte("min_ielts", student.ielts)
-    .lte("tuition_fee", student.budget)
-    .eq("intakes.intake", student.intake)
-    .neq("intakes.status", "closed")
-    .order("tuition_fee", { ascending: true });
-
-  const recommendations = recommendCourses(student as Student, courses as CourseWithUniversity[]);
+  const recommendations = await getRankedCourseRecommendations(supabase, student.id);
 
   return (
     <div className="grid gap-7">
