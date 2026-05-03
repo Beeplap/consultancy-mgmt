@@ -60,6 +60,7 @@ export default async function UniversitiesManagePage() {
                   location: university.location,
                   ranking: university.ranking,
                   description: university.description,
+                  photo_path: university.photo_path,
                 }}
               >
                 <UniversityCoursesTable courses={university.courses} />

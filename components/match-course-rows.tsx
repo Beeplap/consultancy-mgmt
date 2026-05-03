@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
+import Image from "next/image";
 import { Fragment, useState } from "react";
 import { IntakeBadge } from "@/components/ui/badge";
 import type { IntakeStatus, IntakeName } from "@/lib/database.types";
@@ -10,6 +11,8 @@ export type MatchCourseRowSerialized = {
   universityName: string | null;
   universityLocation: string | null;
   universityDescription: string | null;
+  /** Public URL for one university-wide cover image from Supabase Storage. */
+  universityCoverUrl: string | null;
   courseName: string | null;
   subtitle: string;
   courseDescription: string | null;
@@ -180,6 +183,37 @@ export function MatchCourseRows({
                       ) : null}
                     </dl>
                     <div className="space-y-5">
+                      {row.universityCoverUrl ? (
+                        <section>
+                          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                            University photo
+                          </h4>
+                          <a
+                            href={row.universityCoverUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group mx-auto mb-2 block max-w-md overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm"
+                          >
+                            <div className="relative h-[14rem] w-full sm:h-[18rem]">
+                              <Image
+                                src={row.universityCoverUrl}
+                                alt={
+                                  row.universityName
+                                    ? `${row.universityName} — cover photo`
+                                    : "University cover photo"
+                                }
+                                fill
+                                sizes="(max-width: 768px) 100vw, 448px"
+                                className="object-cover object-center transition group-hover:opacity-95"
+                              />
+                            </div>
+                            <span className="sr-only">Open university image full screen in new tab</span>
+                          </a>
+                          <p className="text-[11px] text-zinc-500">
+                            Opens the full-size image in a new tab ({row.universityName ?? "university"}).
+                          </p>
+                        </section>
+                      ) : null}
                       {row.universityDescription ? (
                         <section>
                           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">

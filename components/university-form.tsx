@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PresetOrManualField } from "@/components/preset-or-manual-field";
 import type { MergedCatalogPresetOptions } from "@/lib/catalog-custom-presets";
 import { createUniversityCourseAction } from "@/lib/actions/universities";
+import { universityCoverAcceptAttr } from "@/lib/university-cover";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 
@@ -21,7 +22,7 @@ export function UniversityCourseForm({
   const isNewUniversity = universityId === "";
 
   return (
-    <form action={createUniversityCourseAction} className="grid gap-5">
+    <form action={createUniversityCourseAction} encType="multipart/form-data" className="grid gap-5">
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="University">
           <Select name="university_id" value={universityId} onChange={(e) => setUniversityId(e.target.value)}>
@@ -57,6 +58,19 @@ export function UniversityCourseForm({
               rows={4}
             />
           </Field>
+          <div className="grid gap-2">
+            <span className="text-sm font-medium text-zinc-800">University photo (optional)</span>
+            <p className="text-xs text-zinc-500">
+              One image for the institution (shows on Match Student when a course is expanded). JPG, PNG, WebP, GIF — max 2MB. Bucket{" "}
+              <code className="rounded bg-zinc-100 px-1 py-px text-[11px]">university-covers</code>.
+            </p>
+            <input
+              name="universityCover"
+              type="file"
+              accept={universityCoverAcceptAttr()}
+              className="max-w-md rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm hover:file:bg-zinc-200 focus:border-black focus:ring-2 focus:ring-zinc-200"
+            />
+          </div>
         </>
       ) : (
         <p className="text-xs text-zinc-500">This course will be added to the university you selected above.</p>

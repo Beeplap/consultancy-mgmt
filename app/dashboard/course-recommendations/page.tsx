@@ -1,6 +1,7 @@
 import { MatchCourseRows, type MatchCourseRowSerialized } from "@/components/match-course-rows";
 import { MatchFiltersForm } from "@/components/match-filters-form";
 import { currencyGBP } from "@/lib/format";
+import { universityCoverPublicUrl } from "@/lib/university-cover";
 import { getIeltsWaiverStatus, rankCourses, type MatchingCriteria, type Recommendation } from "@/lib/matching";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { CourseWithUniversity, EnglishGrade, Intake, IntakeName } from "@/lib/database.types";
@@ -153,6 +154,7 @@ function mergeCourseRows(rows: CourseWithUniversity[]): CourseWithUniversity[] {
       prev.universities = {
         ...prev.universities,
         description: prev.universities.description ?? row.universities.description,
+        photo_path: prev.universities.photo_path ?? row.universities.photo_path,
       };
     }
   }
@@ -250,6 +252,7 @@ function serializeMatchCourseRow(row: CourseTableRow, ranMatch: boolean): MatchC
     universityName: c.universities?.name ?? null,
     universityLocation: c.universities?.location ?? null,
     universityDescription: c.universities?.description ?? null,
+    universityCoverUrl: universityCoverPublicUrl(c.universities?.photo_path ?? null),
     courseName: c.name ?? null,
     subtitle: [c.degree, c.duration, c.field].filter(Boolean).join(" · ") || "—",
     courseDescription: c.description ?? null,

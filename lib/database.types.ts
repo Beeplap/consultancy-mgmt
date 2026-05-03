@@ -40,6 +40,8 @@ export type University = {
   location: string | null;
   ranking: number | null;
   description: string | null;
+  /** Supabase Storage object path inside bucket `university-covers`. */
+  photo_path: string | null;
   created_at?: string;
 };
 
@@ -109,7 +111,7 @@ export type Database = {
       };
       universities: {
         Row: University;
-        Insert: Omit<University, "id" | "created_at"> & { id?: string };
+        Insert: Omit<University, "id" | "created_at" | "photo_path"> & { id?: string; photo_path?: string | null };
         Update: Partial<Omit<University, "id" | "created_at">>;
         Relationships: [];
       };

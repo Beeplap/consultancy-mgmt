@@ -1,9 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useTransition } from "react";
 import { updateUniversityAction } from "@/lib/actions/universities";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/field";
+import { universityCoverAcceptAttr, universityCoverPublicUrl } from "@/lib/university-cover";
 
 export type UniversityEditPayload = {
   id: string;
@@ -11,6 +13,7 @@ export type UniversityEditPayload = {
   location: string | null;
   ranking: number | null;
   description: string | null;
+  photo_path: string | null;
 };
 
 type UniversityEditModalProps = {
@@ -49,6 +52,8 @@ export function UniversityEditModal({ open, onOpenChange, university }: Universi
 
   if (!open) return null;
 
+  const previewUrl = universityCoverPublicUrl(university.photo_path);
+
   return (
     <div
       ref={backdropRef}
@@ -73,6 +78,8 @@ export function UniversityEditModal({ open, onOpenChange, university }: Universi
         </div>
         <form
           className="grid gap-4"
+          encType="multipart/form-data"
+          method="post"
           onSubmit={(event) => {
             event.preventDefault();
             const formData = new FormData(event.currentTarget);
@@ -92,6 +99,43 @@ export function UniversityEditModal({ open, onOpenChange, university }: Universi
           <Field label="Ranking">
             <Input name="ranking" type="number" min="1" defaultValue={university.ranking ?? ""} />
           </Field>
+          <div className="grid gap-2">
+            <span className="text-sm font-medium text-zinc-800">University photo (optional)</span>
+            <p className="text-xs text-zinc-500">
+              JPG, PNG, WebP, or GIF. Max <span className="font-medium text-zinc-700">2MB</span>. Stored in Supabase bucket{" "}
+              <code className="rounded bg-zinc-100 px-1 py-px text-[11px]">university-covers</code>.
+            </p>
+            {previewUrl ? (
+              <a
+                href={previewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group mx-auto block max-w-full overflow-hidden rounded-lg border border-zinc-200"
+              >
+                <Image
+                  src={previewUrl}
+                  alt=""
+                  width={640}
+                  height={480}
+                  sizes="(max-width: 512px) 100vw, 512px"
+                  className="mx-auto max-h-40 max-w-full object-contain transition group-hover:opacity-95"
+                />
+                <span className="sr-only">Open current photo full size</span>
+              </a>
+            ) : null}
+            <input
+              name="universityCover"
+              type="file"
+              accept={universityCoverAcceptAttr()}
+              className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm hover:file:bg-zinc-200 focus:border-black focus:ring-2 focus:ring-zinc-200"
+            />
+            {previewUrl ? (
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-600">
+                <input type="checkbox" name="removeUniversityCover" className="h-4 w-4 rounded border-zinc-300" />
+                Remove current photo when saving
+              </label>
+            ) : null}
+          </div>
           <Field label="Description (optional)">
             <Textarea name="description" defaultValue={university.description ?? ""} rows={6} />
           </Field>

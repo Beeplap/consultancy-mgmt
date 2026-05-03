@@ -7,6 +7,7 @@ import { universitiesAdminRoutes } from "@/lib/admin-universities-paths";
 import { persistCourseCatalogSuggestions } from "@/lib/catalog-custom-presets";
 import type { CasDepositPolicy, IeltsWaiverPolicy, IntakeName, IntakeStatus } from "@/lib/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { removeUniversityCoverObject, uploadUniversityCover } from "@/lib/university-cover";
 
 function revalidateUniversitiesAdmin() {
   revalidatePath(universitiesAdminRoutes.root);
@@ -39,6 +40,12 @@ function optionalDescription(formData: FormData, key: string) {
   const text = typeof raw === "string" ? raw : String(raw);
   if (!text.trim()) return null;
   return text;
+}
+
+function optionalCoverFile(formData: FormData, key: string) {
+  const raw = formData.get(key);
+  if (!(raw instanceof File) || raw.size === 0) return null;
+  return raw;
 }
 
 const intakeNames: IntakeName[] = ["Jan", "May", "Sep"];
@@ -93,14 +100,30 @@ async function syncCourseIntakes(
 export async function createUniversityAction(formData: FormData) {
   await requireRole("admin");
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.from("universities").insert({
-    name: optionalTrimmed(formData, "name"),
-    location: optionalTrimmed(formData, "location"),
-    ranking: optionalNumber(formData, "ranking"),
-    description: optionalDescription(formData, "description"),
-  });
+  const { data: uni, error } = await supabase
+    .from("universities")
+    .insert({
+      name: optionalTrimmed(formData, "name"),
+      location: optionalTrimmed(formData, "location"),
+      ranking: optionalNumber(formData, "ranking"),
+      description: optionalDescription(formData, "description"),
+    })
+    .select("id")
+    .single();
 
   if (error) throw new Error(error.message);
+
+  const photo = optionalCoverFile(formData, "universityCover");
+  try {
+    if (photo) {
+      const photoPath = await uploadUniversityCover(supabase, uni.id, photo);
+      await supabase.from("universities").update({ photo_path: photoPath }).eq("id", uni.id);
+    }
+  } catch (cleanupErr) {
+    await supabase.from("universities").delete().eq("id", uni.id);
+    throw cleanupErr;
+  }
+
   revalidateUniversitiesAdmin();
   revalidatePath("/dashboard/course-recommendations");
 }
@@ -109,6 +132,24 @@ export async function updateUniversityAction(formData: FormData) {
   await requireRole("admin");
   const supabase = await createSupabaseServerClient();
   const universityId = required(formData, "universityId");
+
+  const { data: before } = await supabase.from("universities").select("photo_path").eq("id", universityId).maybeSingle();
+
+  let nextPhotoPath: string | null = before?.photo_path ?? null;
+  const removeCover = formData.get("removeUniversityCover") === "on";
+
+  if (removeCover) {
+    await removeUniversityCoverObject(supabase, nextPhotoPath);
+    nextPhotoPath = null;
+  } else {
+    const replacement = optionalCoverFile(formData, "universityCover");
+    if (replacement) {
+      const newPath = await uploadUniversityCover(supabase, universityId, replacement);
+      await removeUniversityCoverObject(supabase, nextPhotoPath);
+      nextPhotoPath = newPath;
+    }
+  }
+
   const { error } = await supabase
     .from("universities")
     .update({
@@ -116,6 +157,7 @@ export async function updateUniversityAction(formData: FormData) {
       location: optionalTrimmed(formData, "location"),
       ranking: optionalNumber(formData, "ranking"),
       description: optionalDescription(formData, "description"),
+      photo_path: nextPhotoPath,
     })
     .eq("id", universityId);
 
@@ -132,7 +174,7 @@ export async function createUniversityCourseAction(formData: FormData) {
   let resolvedUniversityId = universityId;
 
   if (!resolvedUniversityId) {
-    const { data, error } = await supabase
+    const { data: newUni, error } = await supabase
       .from("universities")
       .insert({
         name: optionalTrimmed(formData, "universityName"),
@@ -144,7 +186,18 @@ export async function createUniversityCourseAction(formData: FormData) {
       .single();
 
     if (error) throw new Error(error.message);
-    resolvedUniversityId = data.id;
+    resolvedUniversityId = newUni.id;
+
+    const newUniPhoto = optionalCoverFile(formData, "universityCover");
+    try {
+      if (newUniPhoto) {
+        const photoPath = await uploadUniversityCover(supabase, resolvedUniversityId, newUniPhoto);
+        await supabase.from("universities").update({ photo_path: photoPath }).eq("id", resolvedUniversityId);
+      }
+    } catch (cleanupErr) {
+      await supabase.from("universities").delete().eq("id", resolvedUniversityId);
+      throw cleanupErr;
+    }
   }
 
   const waiverRaw = optionalTrimmed(formData, "ielts_waiver");
@@ -272,6 +325,10 @@ export async function deleteUniversityAction(formData: FormData) {
   await requireRole("admin");
   const supabase = await createSupabaseServerClient();
   const universityId = required(formData, "universityId");
+  const { data: row } = await supabase.from("universities").select("photo_path").eq("id", universityId).maybeSingle();
+
+  await removeUniversityCoverObject(supabase, row?.photo_path);
+
   const { error } = await supabase.from("universities").delete().eq("id", universityId);
   if (error) throw new Error(error.message);
   revalidateUniversitiesAdmin();
