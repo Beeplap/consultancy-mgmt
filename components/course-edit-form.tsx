@@ -11,7 +11,7 @@ import type { Course, Intake, IntakeName, IntakeStatus } from "@/lib/database.ty
 type UniversityOption = { id: string; name: string | null };
 type CourseWithIntakes = Course & { intakes: Intake[] };
 
-const intakeOrder: Record<IntakeName, number> = { Jan: 0, May: 1, Sep: 2 };
+const intakeOrder: Record<IntakeName, number> = { Jan: 0, May: 1, Sep: 2, Nov: 3 };
 
 function defaultIntakeStatus(intakes: Intake[]): IntakeStatus {
   if (intakes.length === 0) return "open";
@@ -135,7 +135,7 @@ export function CourseEditForm({
           defaultValue={course.description ?? ""}
           placeholder="Per course notes. Line breaks are kept."
           rows={4}
-          className="min-h-[6.5rem]"
+          className="min-h-26"
         />
       </Field>
       <div className="grid gap-3">
@@ -144,7 +144,7 @@ export function CourseEditForm({
           Checked intakes are kept or created; unchecked ones are removed. One status applies to all selected intakes (same as adding a course).
         </p>
         <div className="flex flex-wrap gap-6">
-          {(["Jan", "May", "Sep"] as const).map((m) => (
+          {(["Jan", "May", "Sep", "Nov"] as const).map((m) => (
             <label key={m} className="flex items-center gap-2 text-sm text-zinc-700">
               <input
                 type="checkbox"

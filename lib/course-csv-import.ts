@@ -83,6 +83,7 @@ function toIntakeName(input: string): IntakeName | null {
   if (text === "jan" || text === "january") return "Jan";
   if (text === "may") return "May";
   if (text === "sep" || text === "sept" || text === "september") return "Sep";
+  if (text === "nov" || text === "november") return "Nov";
   return null;
 }
 
@@ -97,7 +98,8 @@ function toIntakeStatus(input: string): IntakeStatus | null {
 export function parseOptionAIntakes(raw: string | null | undefined): Array<{ intake: IntakeName; status: IntakeStatus }> {
   const text = (raw ?? "").trim();
   if (!text) return [];
-  const tokens = text.split("|").map((t) => t.trim()).filter(Boolean);
+  const normalized = text.replace(/[;,]+/g, "|");
+  const tokens = normalized.split("|").map((t) => t.trim()).filter(Boolean);
   const map = new Map<IntakeName, IntakeStatus>();
 
   for (const token of tokens) {

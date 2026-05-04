@@ -63,7 +63,7 @@ function optionalCoverFile(formData: FormData, key: string) {
   return raw;
 }
 
-const intakeNames: IntakeName[] = ["Jan", "May", "Sep"];
+const intakeNames: IntakeName[] = ["Jan", "May", "Sep", "Nov"];
 
 function selectedIntakes(formData: FormData): IntakeName[] {
   const selected: IntakeName[] = [];
@@ -294,6 +294,82 @@ export async function importUniversityCoursesCsvAction(formData: FormData) {
     total: parsed.rows.length,
     errors: errors.slice(0, 30),
   };
+}
+
+function requiredNumber(formData: FormData, key: string) {
+  const raw = required(formData, key);
+  const parsed = Number(raw.replace(/,/g, ""));
+  if (!Number.isFinite(parsed)) throw new Error(`${key} must be a valid number`);
+  return parsed;
+}
+
+export async function createManualUniversityCourseAction(formData: FormData) {
+  await requireRole("admin");
+  const supabase = await createSupabaseServerClient();
+  const universityId = required(formData, "universityId");
+
+  const { data: university, error: uniError } = await supabase
+    .from("universities")
+    .select("id")
+    .eq("id", universityId)
+    .maybeSingle();
+  if (uniError) throw new Error(uniError.message);
+  if (!university) throw new Error("Selected university was not found.");
+
+  const waiverRaw = required(formData, "ielts_waiver");
+  const casRaw = required(formData, "cas_deposit") as CasDepositPolicy;
+  const ieltsWaiver =
+    waiverRaw === "none" || waiverRaw === "b_or_above" || waiverRaw === "c_plus_limited"
+      ? (waiverRaw as IeltsWaiverPolicy)
+      : null;
+  if (!ieltsWaiver) throw new Error("Invalid IELTS waiver value.");
+
+  const { data: course, error: insertError } = await supabase
+    .from("courses")
+    .insert({
+      university_id: universityId,
+      name: required(formData, "courseName"),
+      degree: required(formData, "degree"),
+      duration: required(formData, "duration"),
+      field: required(formData, "field"),
+      min_gpa: required(formData, "min_gpa"),
+      min_ielts: required(formData, "min_ielts"),
+      ielts_waiver: ieltsWaiver,
+      fee: requiredNumber(formData, "fee"),
+      accepted_gap: required(formData, "accepted_gap"),
+      cas_deposit: casRaw === "required" ? "required" : "not_required",
+      cas_deposit_amount: requiredNumber(formData, "cas_deposit_amount"),
+      scholarship_upto: requiredNumber(formData, "scholarship_upto"),
+      description: required(formData, "courseDescription"),
+    })
+    .select("id")
+    .single();
+  if (insertError) throw new Error(insertError.message);
+
+  const intakeRaw = required(formData, "intakes");
+  const intakeItems = parseOptionAIntakes(intakeRaw);
+  if (intakeItems.length === 0) {
+    throw new Error("intakes is required. Example: Jan:open|May:closed|Sep:open");
+  }
+
+  const { error: intakeError } = await supabase.from("intakes").insert(
+    intakeItems.map((item) => ({
+      course_id: course.id,
+      intake: item.intake,
+      status: item.status,
+    })),
+  );
+  if (intakeError) throw new Error(intakeError.message);
+
+  await persistCourseCatalogSuggestions(supabase, {
+    courseName: required(formData, "courseName"),
+    degree: required(formData, "degree"),
+    duration: required(formData, "duration"),
+    field: required(formData, "field"),
+  });
+
+  revalidateUniversitiesAdmin();
+  revalidatePath("/dashboard/course-recommendations");
 }
 
 export async function updateUniversityCourseAction(formData: FormData) {

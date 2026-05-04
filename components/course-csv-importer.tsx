@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { importUniversityCoursesCsvAction } from "@/lib/actions/universities";
+import { createManualUniversityCourseAction, importUniversityCoursesCsvAction } from "@/lib/actions/universities";
 import { autoMapCsvHeaders, courseCsvFieldDefinitions, type CourseCsvMapping } from "@/lib/course-csv-import";
 import { parseCsv } from "@/lib/csv";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ type UniversityOption = {
 type ImportResult = Awaited<ReturnType<typeof importUniversityCoursesCsvAction>>;
 
 export function CourseCsvImporter({ universities }: { universities: UniversityOption[] }) {
+  const [mode, setMode] = useState<"csv" | "manual">("csv");
   const [selectedUniversity, setSelectedUniversity] = useState("");
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -84,8 +85,49 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
     });
   }
 
+  function onManualSubmit(formData: FormData) {
+    if (!selectedUniversity) {
+      setErrorMessage("Please select a university.");
+      return;
+    }
+    formData.set("universityId", selectedUniversity);
+    startTransition(async () => {
+      try {
+        await createManualUniversityCourseAction(formData);
+        setErrorMessage(null);
+        setResult(null);
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Manual add failed.");
+      }
+    });
+  }
+
   return (
     <div className="grid gap-5">
+      <div className="grid gap-2">
+        <span className="text-sm font-medium text-zinc-800">Add mode</span>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setMode("csv")}
+            className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium ${
+              mode === "csv" ? "border-black bg-black text-white" : "border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50"
+            }`}
+          >
+            Import using CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("manual")}
+            className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium ${
+              mode === "manual" ? "border-black bg-black text-white" : "border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50"
+            }`}
+          >
+            Add manually
+          </button>
+        </div>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2">
         <label className="grid gap-2">
           <span className="text-sm font-medium text-zinc-800">Select university</span>
@@ -102,32 +144,119 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
             ))}
           </select>
         </label>
-        <label className="grid gap-2">
-          <span className="text-sm font-medium text-zinc-800">Upload CSV</span>
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)}
-            className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm hover:file:bg-zinc-200 focus:border-black focus:ring-2 focus:ring-zinc-200"
-          />
-        </label>
+        {mode === "csv" ? (
+          <label className="grid gap-2">
+            <span className="text-sm font-medium text-zinc-800">Upload CSV</span>
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)}
+              className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm hover:file:bg-zinc-200 focus:border-black focus:ring-2 focus:ring-zinc-200"
+            />
+          </label>
+        ) : null}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="secondary" onClick={() => void detectHeaders()} disabled={!csvFile || pending}>
-          Detect headers
-        </Button>
-        <Button type="button" onClick={onImport} disabled={!csvFile || !selectedUniversity || pending}>
-          {pending ? "Importing..." : "Import all courses"}
-        </Button>
-      </div>
+      {mode === "csv" ? (
+        <>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" onClick={() => void detectHeaders()} disabled={!csvFile || pending}>
+              Detect headers
+            </Button>
+            <Button type="button" onClick={onImport} disabled={!csvFile || !selectedUniversity || pending}>
+              {pending ? "Importing..." : "Import all courses"}
+            </Button>
+          </div>
 
-      <p className="text-xs text-zinc-600">
-        Option A intake format is supported in one column: <span className="font-medium">Jan:open|May:closed|Sep:closing</span>.
-        Also supports month-only values like <span className="font-medium">September</span> (defaults to open). Empty values and{" "}
-        <span className="font-medium">Not specified</span> are stored as blank. Duplicate courses under the same university are inserted as
-        separate records.
-      </p>
+          <p className="text-xs text-zinc-600">
+            Intakes can be given as months only, for example <span className="font-medium">September, November</span>. Optional status format is
+            still supported: <span className="font-medium">Jan:open|May:closed|Sep:closing|Nov:open</span>. Month-only values default to{" "}
+            <span className="font-medium">open</span>. Empty values and <span className="font-medium">Not specified</span> are stored as blank.
+            Duplicate courses under the same university are inserted as separate records.
+          </p>
+        </>
+      ) : (
+        <form action={onManualSubmit} className="grid gap-4 rounded-lg border border-zinc-200 bg-zinc-50/60 p-4">
+          <input type="hidden" name="universityId" value={selectedUniversity} />
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium text-zinc-800">Course name *</span>
+              <input name="courseName" required className="h-10 rounded-md border border-zinc-300 bg-white px-3" />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium text-zinc-800">Degree *</span>
+              <input name="degree" required className="h-10 rounded-md border border-zinc-300 bg-white px-3" />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium text-zinc-800">Duration *</span>
+              <input name="duration" required className="h-10 rounded-md border border-zinc-300 bg-white px-3" />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium text-zinc-800">Field *</span>
+              <input name="field" required className="h-10 rounded-md border border-zinc-300 bg-white px-3" />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium text-zinc-800">Minimum GPA *</span>
+              <input name="min_gpa" required className="h-10 rounded-md border border-zinc-300 bg-white px-3" />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium text-zinc-800">Minimum IELTS *</span>
+              <input name="min_ielts" required className="h-10 rounded-md border border-zinc-300 bg-white px-3" />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium text-zinc-800">IELTS waiver *</span>
+              <select name="ielts_waiver" required className="h-10 rounded-md border border-zinc-300 bg-white px-3">
+                <option value="">Select</option>
+                <option value="none">none</option>
+                <option value="b_or_above">b_or_above</option>
+                <option value="c_plus_limited">c_plus_limited</option>
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium text-zinc-800">Fee *</span>
+              <input name="fee" required className="h-10 rounded-md border border-zinc-300 bg-white px-3" />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium text-zinc-800">Accepted gap *</span>
+              <input name="accepted_gap" required className="h-10 rounded-md border border-zinc-300 bg-white px-3" />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium text-zinc-800">CAS deposit *</span>
+              <select name="cas_deposit" required className="h-10 rounded-md border border-zinc-300 bg-white px-3">
+                <option value="">Select</option>
+                <option value="not_required">not_required</option>
+                <option value="required">required</option>
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium text-zinc-800">CAS deposit amount *</span>
+              <input name="cas_deposit_amount" required className="h-10 rounded-md border border-zinc-300 bg-white px-3" />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium text-zinc-800">Scholarship up to *</span>
+              <input name="scholarship_upto" required className="h-10 rounded-md border border-zinc-300 bg-white px-3" />
+            </label>
+            <label className="grid gap-1 text-sm md:col-span-2">
+              <span className="font-medium text-zinc-800">Course description *</span>
+              <textarea name="courseDescription" required rows={4} className="rounded-md border border-zinc-300 bg-white px-3 py-2" />
+            </label>
+            <label className="grid gap-1 text-sm md:col-span-2">
+              <span className="font-medium text-zinc-800">Intakes (months) *</span>
+              <input
+                name="intakes"
+                required
+                placeholder="September, November"
+                className="h-10 rounded-md border border-zinc-300 bg-white px-3"
+              />
+            </label>
+          </div>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={pending || !selectedUniversity}>
+              {pending ? "Saving..." : "Save manual course"}
+            </Button>
+          </div>
+        </form>
+      )}
 
       {errorMessage ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</div>

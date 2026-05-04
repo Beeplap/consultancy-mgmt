@@ -20,7 +20,7 @@ type MatchFiltersFormProps = {
 };
 
 const englishGrades: EnglishGrade[] = ["A+", "A", "B+", "B", "C+", "C", "D", "E"];
-const intakes: IntakeName[] = ["Jan", "May", "Sep"];
+const intakes: IntakeName[] = ["Jan", "May", "Sep", "Nov"];
 
 export function MatchFiltersForm({ filters, universities }: MatchFiltersFormProps) {
   const sortedUniversities = [...universities].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));

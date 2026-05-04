@@ -21,7 +21,7 @@ create table if not exists public.students (
   ielts numeric not null,
   preferred_course text not null,
   budget integer not null,
-  intake text not null check (intake in ('Jan', 'May', 'Sep')),
+  intake text not null check (intake in ('Jan', 'May', 'Sep', 'Nov')),
   preferred_city text,
   scholarship boolean not null default false,
   status text not null default 'new' check (status in ('new', 'applied', 'offer', 'visa', 'enrolled')),
@@ -60,7 +60,7 @@ create table if not exists public.courses (
 create table if not exists public.intakes (
   id uuid primary key default gen_random_uuid(),
   course_id uuid not null references public.courses(id) on delete cascade,
-  intake text not null check (intake in ('Jan', 'May', 'Sep')),
+  intake text not null check (intake in ('Jan', 'May', 'Sep', 'Nov')),
   status text not null default 'open' check (status in ('open', 'closed', 'closing')),
   created_at timestamptz not null default now(),
   unique (course_id, intake)
@@ -112,6 +112,27 @@ alter table public.courses add column if not exists scholarship_upto integer;
 alter table public.universities add column if not exists description text;
 alter table public.universities add column if not exists photo_path text;
 alter table public.courses add column if not exists description text;
+
+do $$
+begin
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'students'
+  ) then
+    alter table public.students drop constraint if exists students_intake_check;
+    alter table public.students
+      add constraint students_intake_check check (intake in ('Jan', 'May', 'Sep', 'Nov'));
+  end if;
+
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'intakes'
+  ) then
+    alter table public.intakes drop constraint if exists intakes_intake_check;
+    alter table public.intakes
+      add constraint intakes_intake_check check (intake in ('Jan', 'May', 'Sep', 'Nov'));
+  end if;
+end $$;
 
 create table if not exists public.custom_catalog_presets (
   id uuid primary key default gen_random_uuid(),

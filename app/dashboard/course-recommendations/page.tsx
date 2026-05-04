@@ -21,7 +21,7 @@ type PageProps = {
   }>;
 };
 
-const intakeRank: Record<IntakeName, number> = { Jan: 0, May: 1, Sep: 2 };
+const intakeRank: Record<IntakeName, number> = { Jan: 0, May: 1, Sep: 2, Nov: 3 };
 
 /** One row per course; all intakes in one cell. */
 type CourseTableRow = {
