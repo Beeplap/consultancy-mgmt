@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { UniversityCourseSection } from "@/components/university-course-section";
-import { UniversityCoursesTable } from "@/components/university-courses-table";
 import { universitiesAdminRoutes } from "@/lib/admin-universities-paths";
 import { requireRole } from "@/lib/auth";
 import type { Course, Intake, University } from "@/lib/database.types";
@@ -68,9 +67,8 @@ export default async function UniversitiesManagePage() {
                   description: university.description,
                   photo_path: university.photo_path,
                 }}
-              >
-                <UniversityCoursesTable courses={university.courses} />
-              </UniversityCourseSection>
+                courses={university.courses}
+              />
             ))}
           </div>
         )}

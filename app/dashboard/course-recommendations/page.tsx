@@ -44,13 +44,11 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
 
   let query = supabase
     .from("courses")
-    .select("*, universities(*), intakes!inner(*)")
-    .neq("intakes.status", "closed")
+    .select("*, universities(*), intakes(*)")
     .order("fee", { ascending: true, nullsFirst: false });
 
   if (ranMatch) {
     if (criteria.budget !== undefined) query = query.or(`fee.is.null,fee.lte.${criteria.budget}`);
-    if (criteria.intake) query = query.eq("intakes.intake", criteria.intake);
     if (criteria.applyWithWaiver) query = query.neq("ielts_waiver", "none");
   }
   if (filters.universityId?.trim()) {
@@ -65,7 +63,7 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
   courses = filterCourseSearch(courses, criteria.preferredCourse);
 
   let rows: CourseTableRow[] = ranMatch
-    ? groupRecommendations(rankCourses(criteria, courses))
+    ? groupRecommendationsWithUnmatched(rankCourses(criteria, courses), courses)
     : catalogGroupedRows(courses);
   rows = sortRows(rows, filters.sort ?? "relevance", ranMatch);
 
@@ -198,6 +196,16 @@ function groupRecommendations(recommendations: Recommendation[]): CourseTableRow
   }
 
   return rows.sort((a, b) => sortCourses(a.course, b.course));
+}
+
+function groupRecommendationsWithUnmatched(
+  recommendations: Recommendation[],
+  allCourses: CourseWithUniversity[],
+): CourseTableRow[] {
+  const recommendedRows = groupRecommendations(recommendations);
+  const recommendedCourseIds = new Set(recommendedRows.map((row) => row.course.id));
+  const unmatchedRows = catalogGroupedRows(allCourses.filter((course) => !recommendedCourseIds.has(course.id)));
+  return [...recommendedRows, ...unmatchedRows];
 }
 
 function sortCourses(a: CourseWithUniversity, b: CourseWithUniversity) {

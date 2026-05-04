@@ -54,15 +54,20 @@ export function autoMapCsvHeaders(headers: string[]): CourseCsvMapping {
 export function parseOptionalNumber(input: string | null | undefined) {
   const text = (input ?? "").trim();
   if (!text) return null;
-  const num = Number(text.replace(/,/g, ""));
-  return Number.isFinite(num) ? num : null;
+  const cleaned = text.replace(/,/g, "");
+  const direct = Number(cleaned);
+  if (Number.isFinite(direct)) return direct;
+  const firstNumber = cleaned.match(/-?\d+(\.\d+)?/);
+  if (!firstNumber) return null;
+  const parsed = Number(firstNumber[0]);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export function parseIeltsWaiverPolicy(input: string | null | undefined): IeltsWaiverPolicy | null {
   const text = (input ?? "").trim().toLowerCase();
   if (!text) return null;
   if (["none", "no", "no waiver"].includes(text)) return "none";
-  if (["b_or_above", "b or above", "borabove", "waiver"].includes(text)) return "b_or_above";
+  if (["b_or_above", "b or above", "borabove", "waiver", "b", "a", "a+", "b+"].includes(text)) return "b_or_above";
   if (["c_plus_limited", "c+ limited", "cpluslimited", "c+limited"].includes(text)) return "c_plus_limited";
   return null;
 }

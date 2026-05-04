@@ -1,5 +1,11 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import { CourseRowActions } from "@/components/course-row-actions";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { IntakeBadge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { deleteManyCoursesAction } from "@/lib/actions/universities";
 import { currencyGBP } from "@/lib/format";
 import type { Course, Intake } from "@/lib/database.types";
 
@@ -18,12 +24,77 @@ function formatCasDeposit(course: Pick<Course, "cas_deposit" | "cas_deposit_amou
   return "Required";
 }
 
-export function UniversityCoursesTable({ courses }: { courses: CourseWithIntakesRow[] }) {
+export function UniversityCoursesTable({
+  courses,
+  selectMode,
+  onSelectModeChange,
+}: {
+  courses: CourseWithIntakesRow[];
+  selectMode: boolean;
+  onSelectModeChange: (enabled: boolean) => void;
+}) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const allSelected = useMemo(
+    () => courses.length > 0 && courses.every((course) => selectedIds.includes(course.id)),
+    [courses, selectedIds],
+  );
+
+  function toggleCourse(courseId: string, checked: boolean) {
+    setSelectedIds((current) =>
+      checked ? (current.includes(courseId) ? current : [...current, courseId]) : current.filter((id) => id !== courseId),
+    );
+  }
+
+  function toggleAll(checked: boolean) {
+    setSelectedIds(checked ? courses.map((course) => course.id) : []);
+  }
+
+  useEffect(() => {
+    if (!selectMode) setSelectedIds([]);
+  }, [selectMode]);
+
   return (
     <div className="overflow-x-auto">
+      {selectMode ? (
+        <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
+          <form action={deleteManyCoursesAction} className="flex w-full flex-wrap items-center justify-between gap-3">
+            <label className="inline-flex items-center gap-2 text-sm text-zinc-700">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={(e) => toggleAll(e.currentTarget.checked)}
+                className="h-4 w-4 rounded border-zinc-300"
+              />
+              Select all
+            </label>
+            <div className="flex items-center gap-2">
+              {selectedIds.map((id) => (
+                <input key={id} type="hidden" name="courseIds" value={id} />
+              ))}
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  onSelectModeChange(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <ConfirmSubmitButton
+                message={`Delete ${selectedIds.length} selected course(s)? This cannot be undone.`}
+                className="h-10"
+              >
+                Delete selected ({selectedIds.length})
+              </ConfirmSubmitButton>
+            </div>
+          </form>
+        </div>
+      ) : null}
       <table className="w-full min-w-[1040px] text-left text-sm">
         <thead className="border-y border-zinc-200 bg-zinc-50 text-xs uppercase text-zinc-500">
           <tr>
+            {selectMode ? <th className="w-10 px-2 py-3 font-medium" aria-label="Select course" /> : null}
             <th className="px-4 py-3 font-medium">Course</th>
             <th className="px-4 py-3 font-medium">Requirements</th>
             <th className="px-4 py-3 font-medium">Fee</th>
@@ -37,13 +108,24 @@ export function UniversityCoursesTable({ courses }: { courses: CourseWithIntakes
         <tbody className="divide-y divide-zinc-100">
           {courses.length === 0 ? (
             <tr>
-              <td className="px-4 py-6 text-center text-zinc-500" colSpan={8}>
-                No courses for this university yet. Use Add course on the left.
+              <td className="px-4 py-6 text-center text-zinc-500" colSpan={selectMode ? 9 : 8}>
+                No courses for this university yet. Use the Import courses CSV page to add in bulk.
               </td>
             </tr>
           ) : null}
           {courses.map((course) => (
             <tr key={course.id}>
+              {selectMode ? (
+                <td className="px-2 py-4 align-top">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(course.id)}
+                    onChange={(e) => toggleCourse(course.id, e.currentTarget.checked)}
+                    className="h-4 w-4 rounded border-zinc-300"
+                    aria-label={`Select ${course.name ?? "course"}`}
+                  />
+                </td>
+              ) : null}
               <td className="px-4 py-4">
                 <p className="font-medium">{course.name ?? "—"}</p>
                 <p className="text-xs text-zinc-500">
@@ -80,7 +162,7 @@ export function UniversityCoursesTable({ courses }: { courses: CourseWithIntakes
                 <p className="mt-2 text-xs text-zinc-400">Edit course to change intakes.</p>
               </td>
               <td className="px-4 py-4 align-top">
-                <CourseRowActions course={course} />
+                {!selectMode ? <CourseRowActions course={course} /> : null}
               </td>
             </tr>
           ))}

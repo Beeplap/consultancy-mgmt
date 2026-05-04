@@ -124,7 +124,9 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
 
       <p className="text-xs text-zinc-600">
         Option A intake format is supported in one column: <span className="font-medium">Jan:open|May:closed|Sep:closing</span>.
-        Duplicate courses under the same university are inserted as separate records.
+        Also supports month-only values like <span className="font-medium">September</span> (defaults to open). Empty values and{" "}
+        <span className="font-medium">Not specified</span> are stored as blank. Duplicate courses under the same university are inserted as
+        separate records.
       </p>
 
       {errorMessage ? (

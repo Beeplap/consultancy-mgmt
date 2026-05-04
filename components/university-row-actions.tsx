@@ -12,9 +12,10 @@ type UniversityRowActionsProps = {
   universityId: string;
   displayName: string;
   onEdit: () => void;
+  onSelectCourses: () => void;
 };
 
-export function UniversityRowActions({ universityId, displayName, onEdit }: UniversityRowActionsProps) {
+export function UniversityRowActions({ universityId, displayName, onEdit, onSelectCourses }: UniversityRowActionsProps) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -84,6 +85,17 @@ export function UniversityRowActions({ universityId, displayName, onEdit }: Univ
                   type="button"
                   role="menuitem"
                   className="flex w-full items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-black hover:bg-zinc-50"
+                  onClick={() => {
+                    setOpen(false);
+                    onSelectCourses();
+                  }}
+                >
+                  Select courses
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="mt-1 flex w-full items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-black hover:bg-zinc-50"
                   onClick={() => {
                     setOpen(false);
                     onEdit();

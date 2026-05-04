@@ -1,17 +1,18 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useState } from "react";
 import { UniversityEditModal, type UniversityEditPayload } from "@/components/university-edit-modal";
+import { UniversityCoursesTable, type CourseWithIntakesRow } from "@/components/university-courses-table";
 import { UniversityRowActions } from "@/components/university-row-actions";
 
 type UniversityCourseSectionProps = {
   university: UniversityEditPayload;
-  children: ReactNode;
+  courses: CourseWithIntakesRow[];
 };
 
-export function UniversityCourseSection({ university, children }: UniversityCourseSectionProps) {
+export function UniversityCourseSection({ university, courses }: UniversityCourseSectionProps) {
   const [editOpen, setEditOpen] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
   const displayName = university.name?.trim() || "Unnamed university";
 
   return (
@@ -23,9 +24,14 @@ export function UniversityCourseSection({ university, children }: UniversityCour
             {[university.location, university.ranking != null ? `Ranking ${university.ranking}` : null].filter(Boolean).join(" · ") || "—"}
           </p>
         </div>
-        <UniversityRowActions universityId={university.id} displayName={displayName} onEdit={() => setEditOpen(true)} />
+        <UniversityRowActions
+          universityId={university.id}
+          displayName={displayName}
+          onEdit={() => setEditOpen(true)}
+          onSelectCourses={() => setSelectMode(true)}
+        />
       </div>
-      {children}
+      <UniversityCoursesTable courses={courses} selectMode={selectMode} onSelectModeChange={setSelectMode} />
       <UniversityEditModal open={editOpen} onOpenChange={setEditOpen} university={university} />
     </article>
   );

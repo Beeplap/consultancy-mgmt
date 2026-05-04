@@ -186,7 +186,14 @@ function mappedCell(row: Record<string, string>, mapping: CourseCsvMapping, key:
   const header = mapping[key];
   if (!header) return null;
   const value = row[header];
-  return typeof value === "string" ? value.trim() : null;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.toLowerCase();
+  if (normalized === "not specified" || normalized === "n/a" || normalized === "na" || normalized === "-") {
+    return null;
+  }
+  return trimmed;
 }
 
 export async function importUniversityCoursesCsvAction(formData: FormData) {
@@ -348,6 +355,21 @@ export async function deleteCourseAction(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const courseId = required(formData, "courseId");
   const { error } = await supabase.from("courses").delete().eq("id", courseId);
+  if (error) throw new Error(error.message);
+  revalidateUniversitiesAdmin();
+  revalidatePath("/dashboard/course-recommendations");
+}
+
+export async function deleteManyCoursesAction(formData: FormData) {
+  await requireRole("admin");
+  const supabase = await createSupabaseServerClient();
+  const courseIds = formData
+    .getAll("courseIds")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+  if (courseIds.length === 0) throw new Error("Select at least one course to delete.");
+
+  const { error } = await supabase.from("courses").delete().in("id", courseIds);
   if (error) throw new Error(error.message);
   revalidateUniversitiesAdmin();
   revalidatePath("/dashboard/course-recommendations");
