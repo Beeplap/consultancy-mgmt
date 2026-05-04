@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { UniversityCourseForm } from "@/components/university-form";
-import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { createUniversityAction } from "@/lib/actions/universities";
 import { universitiesAdminRoutes } from "@/lib/admin-universities-paths";
@@ -43,12 +43,12 @@ export default async function UniversitiesAddPage() {
               <Input name="location" />
             </Field>
             <Field label="Ranking">
-              <Input name="ranking" type="number" min="1" />
+              <Input name="ranking" />
             </Field>
             <div className="flex justify-end md:justify-start">
-              <Button type="submit" variant="secondary" className="h-10">
+              <PendingSubmitButton type="submit" variant="secondary" className="h-10" pendingChildren="Saving...">
                 Save university
-              </Button>
+              </PendingSubmitButton>
             </div>
           </div>
           <Field label="Description (optional)">

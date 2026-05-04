@@ -97,7 +97,7 @@ export function UniversityEditModal({ open, onOpenChange, university }: Universi
             <Input name="location" defaultValue={university.location ?? ""} />
           </Field>
           <Field label="Ranking">
-            <Input name="ranking" type="number" min="1" defaultValue={university.ranking ?? ""} />
+            <Input name="ranking"  defaultValue={university.ranking ?? ""} />
           </Field>
           <div className="grid gap-2">
             <span className="text-sm font-medium text-zinc-800">University photo (optional)</span>

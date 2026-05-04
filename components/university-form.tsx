@@ -5,7 +5,7 @@ import { PresetOrManualField } from "@/components/preset-or-manual-field";
 import type { MergedCatalogPresetOptions } from "@/lib/catalog-custom-presets";
 import { createUniversityCourseAction } from "@/lib/actions/universities";
 import { universityCoverAcceptAttr } from "@/lib/university-cover";
-import { Button } from "@/components/ui/button";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 
 type UniversityOption = { id: string; name: string | null };
@@ -48,7 +48,7 @@ export function UniversityCourseForm({
               <Input name="location" placeholder="e.g. Liverpool" />
             </Field>
             <Field label="Ranking">
-              <Input name="ranking" type="number" min="1" />
+              <Input name="ranking"  />
             </Field>
           </div>
           <Field label="University description (optional, new university only)">
@@ -107,10 +107,10 @@ export function UniversityCourseForm({
       </div>
       <div className="grid gap-4 md:grid-cols-4">
         <Field label="Minimum GPA">
-          <Input name="min_gpa" type="number" step="0.1" />
+          <Input name="min_gpa"  />
         </Field>
         <Field label="Minimum IELTS">
-          <Input name="min_ielts" type="number" step="0.1" />
+          <Input name="min_ielts"  />
         </Field>
         <Field label="IELTS waiver">
           <Select name="ielts_waiver" defaultValue="">
@@ -121,7 +121,7 @@ export function UniversityCourseForm({
           </Select>
         </Field>
         <Field label="Fee">
-          <Input name="fee" type="number" placeholder="GBP" />
+          <Input name="fee" placeholder="GBP" />
         </Field>
       </div>
       <div className="grid gap-6 md:grid-cols-2">
@@ -129,7 +129,7 @@ export function UniversityCourseForm({
           <Input name="accepted_gap" placeholder="e.g. Up to 2 years" />
         </Field>
         <Field label="Scholarship up to (£)">
-          <Input name="scholarship_upto" type="number" placeholder="Optional cap" />
+          <Input name="scholarship_upto" placeholder="Optional cap" />
         </Field>
       </div>
       <div className="rounded-lg border border-zinc-200 bg-zinc-50/70 p-4 md:p-5">
@@ -149,7 +149,7 @@ export function UniversityCourseForm({
           </Field>
           {casDeposit === "required" ? (
             <Field label="Deposit amount (£)">
-              <Input name="cas_deposit_amount" type="number" min="0" placeholder="e.g. 6500" />
+              <Input name="cas_deposit_amount" placeholder="e.g. 6500" />
             </Field>
           ) : null}
         </div>
@@ -181,7 +181,9 @@ export function UniversityCourseForm({
         </Field>
       </div>
       <div className="flex justify-end">
-        <Button type="submit">Add course to university</Button>
+        <PendingSubmitButton type="submit" pendingChildren="Adding course...">
+          Add course to university
+        </PendingSubmitButton>
       </div>
     </form>
   );

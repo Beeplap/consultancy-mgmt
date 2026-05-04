@@ -82,10 +82,10 @@ export function CourseEditForm({
       </div>
       <div className="grid gap-4 md:grid-cols-4">
         <Field label="Minimum GPA">
-          <Input name="min_gpa" type="number" step="0.1" defaultValue={course.min_gpa ?? ""} />
+          <Input name="min_gpa"  defaultValue={course.min_gpa ?? ""} />
         </Field>
         <Field label="Minimum IELTS">
-          <Input name="min_ielts" type="number" step="0.1" defaultValue={course.min_ielts ?? ""} />
+          <Input name="min_ielts"  defaultValue={course.min_ielts ?? ""} />
         </Field>
         <Field label="IELTS waiver">
           <Select name="ielts_waiver" defaultValue={course.ielts_waiver ?? ""}>
@@ -96,7 +96,7 @@ export function CourseEditForm({
           </Select>
         </Field>
         <Field label="Fee">
-          <Input name="fee" type="number" placeholder="GBP" defaultValue={course.fee ?? ""} />
+          <Input name="fee" placeholder="GBP" defaultValue={course.fee ?? ""} />
         </Field>
       </div>
       <div className="grid gap-6 md:grid-cols-2">
@@ -104,7 +104,7 @@ export function CourseEditForm({
           <Input name="accepted_gap" defaultValue={course.accepted_gap ?? ""} placeholder="e.g. Up to 2 years" />
         </Field>
         <Field label="Scholarship up to (£)">
-          <Input name="scholarship_upto" type="number" placeholder="Optional cap" defaultValue={course.scholarship_upto ?? ""} />
+          <Input name="scholarship_upto" placeholder="Optional cap" defaultValue={course.scholarship_upto ?? ""} />
         </Field>
       </div>
       <div className="rounded-lg border border-zinc-200 bg-zinc-50/70 p-4 md:p-5">
@@ -124,7 +124,7 @@ export function CourseEditForm({
           </Field>
           {casDeposit === "required" ? (
             <Field label="Deposit amount (£)">
-              <Input name="cas_deposit_amount" type="number" min="0" placeholder="e.g. 6500" defaultValue={course.cas_deposit_amount ?? ""} />
+              <Input name="cas_deposit_amount" placeholder="e.g. 6500" defaultValue={course.cas_deposit_amount ?? ""} />
             </Field>
           ) : null}
         </div>
