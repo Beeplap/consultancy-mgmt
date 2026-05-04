@@ -24,16 +24,22 @@ export default async function UniversitiesManagePage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Universities Management</h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            Edit universities, browse courses &amp; intakes, and delete records. Adding is on a separate screen.
-          </p>
+          <p className="mt-1 text-sm text-zinc-600">Edit universities, browse courses &amp; intakes, and delete records.</p>
         </div>
-        <Link
-          href={universitiesAdminRoutes.add}
-          className="inline-flex h-10 shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-white px-4 text-sm font-medium text-black transition hover:bg-zinc-50"
-        >
-          Add university &amp; course
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={universitiesAdminRoutes.add}
+            className="inline-flex h-10 shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-white px-4 text-sm font-medium text-black transition hover:bg-zinc-50"
+          >
+            Add university
+          </Link>
+          <Link
+            href={universitiesAdminRoutes.importCourses}
+            className="inline-flex h-10 shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-white px-4 text-sm font-medium text-black transition hover:bg-zinc-50"
+          >
+            Import courses CSV
+          </Link>
+        </div>
       </div>
 
       <section className="rounded-lg border border-zinc-200 bg-white lg:sticky lg:top-4 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:shadow-sm">
@@ -45,7 +51,7 @@ export default async function UniversitiesManagePage() {
           <p className="px-5 py-8 text-center text-sm text-zinc-500">
             No universities yet.{" "}
             <Link href={universitiesAdminRoutes.add} className="font-medium text-zinc-800 underline underline-offset-2 hover:text-black">
-              Add a university or course
+              Add a university
             </Link>{" "}
             to get started.
           </p>

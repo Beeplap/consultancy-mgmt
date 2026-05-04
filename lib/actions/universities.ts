@@ -5,6 +5,15 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { universitiesAdminRoutes } from "@/lib/admin-universities-paths";
 import { persistCourseCatalogSuggestions } from "@/lib/catalog-custom-presets";
+import { parseCsv } from "@/lib/csv";
+import {
+  type CourseCsvFieldKey,
+  type CourseCsvMapping,
+  parseCasDepositPolicy,
+  parseIeltsWaiverPolicy,
+  parseOptionAIntakes,
+  parseOptionalNumber,
+} from "@/lib/course-csv-import";
 import type { CasDepositPolicy, IeltsWaiverPolicy, IntakeName, IntakeStatus } from "@/lib/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { removeUniversityCoverObject, uploadUniversityCover } from "@/lib/university-cover";
@@ -13,6 +22,7 @@ function revalidateUniversitiesAdmin() {
   revalidatePath(universitiesAdminRoutes.root);
   revalidatePath(universitiesAdminRoutes.add);
   revalidatePath(universitiesAdminRoutes.manage);
+  revalidatePath(universitiesAdminRoutes.importCourses);
 }
 
 function required(formData: FormData, key: string) {
@@ -167,96 +177,111 @@ export async function updateUniversityAction(formData: FormData) {
   revalidatePath("/dashboard/course-recommendations");
 }
 
-export async function createUniversityCourseAction(formData: FormData) {
+function mappedCell(row: Record<string, string>, mapping: CourseCsvMapping, key: CourseCsvFieldKey) {
+  const header = mapping[key];
+  if (!header) return null;
+  const value = row[header];
+  return typeof value === "string" ? value.trim() : null;
+}
+
+export async function importUniversityCoursesCsvAction(formData: FormData) {
   await requireRole("admin");
   const supabase = await createSupabaseServerClient();
+  const universityId = required(formData, "universityId");
+  const mappingRaw = required(formData, "mappingJson");
+  const csvFile = formData.get("coursesCsv");
 
-  const universityId = String(formData.get("university_id") ?? "").trim();
-  let resolvedUniversityId = universityId;
+  if (!(csvFile instanceof File) || csvFile.size === 0) {
+    throw new Error("Please upload a CSV file.");
+  }
 
-  if (!resolvedUniversityId) {
-    const { data: newUni, error } = await supabase
-      .from("universities")
-      .insert({
-        name: optionalTrimmed(formData, "universityName"),
-        location: optionalTrimmed(formData, "location"),
-        ranking: optionalNumber(formData, "ranking"),
-        description: optionalDescription(formData, "universityDescription"),
-      })
-      .select("id")
-      .single();
+  const mapping = JSON.parse(mappingRaw) as CourseCsvMapping;
+  if (!mapping.courseName) {
+    throw new Error("Course name mapping is required.");
+  }
 
-    if (error) throw new Error(error.message);
-    resolvedUniversityId = newUni.id;
+  const { data: university, error: uniError } = await supabase
+    .from("universities")
+    .select("id")
+    .eq("id", universityId)
+    .maybeSingle();
+  if (uniError) throw new Error(uniError.message);
+  if (!university) throw new Error("Selected university was not found.");
 
-    const newUniPhoto = optionalCoverFile(formData, "universityCover");
+  const text = await csvFile.text();
+  const parsed = parseCsv(text);
+  if (parsed.rows.length === 0) {
+    throw new Error("CSV has no data rows to import.");
+  }
+
+  let inserted = 0;
+  let failed = 0;
+  const errors: Array<{ row: number; message: string }> = [];
+
+  for (let idx = 0; idx < parsed.rows.length; idx += 1) {
+    const row = parsed.rows[idx];
+    const rowNumber = idx + 2;
     try {
-      if (newUniPhoto) {
-        const photoPath = await uploadUniversityCover(supabase, resolvedUniversityId, newUniPhoto);
-        await supabase.from("universities").update({ photo_path: photoPath }).eq("id", resolvedUniversityId);
+      const courseName = mappedCell(row, mapping, "courseName");
+      if (!courseName) throw new Error("Course name is empty for this row.");
+
+      const ieltsWaiver = parseIeltsWaiverPolicy(mappedCell(row, mapping, "ielts_waiver"));
+      const casDeposit = parseCasDepositPolicy(mappedCell(row, mapping, "cas_deposit"));
+
+      const { data: course, error: courseError } = await supabase
+        .from("courses")
+        .insert({
+          university_id: universityId,
+          name: courseName,
+          degree: mappedCell(row, mapping, "degree"),
+          duration: mappedCell(row, mapping, "duration"),
+          field: mappedCell(row, mapping, "field"),
+          min_gpa: parseOptionalNumber(mappedCell(row, mapping, "min_gpa")),
+          min_ielts: parseOptionalNumber(mappedCell(row, mapping, "min_ielts")),
+          ielts_waiver: ieltsWaiver,
+          fee: parseOptionalNumber(mappedCell(row, mapping, "fee")),
+          accepted_gap: mappedCell(row, mapping, "accepted_gap"),
+          cas_deposit: casDeposit,
+          cas_deposit_amount:
+            casDeposit === "required" ? parseOptionalNumber(mappedCell(row, mapping, "cas_deposit_amount")) : null,
+          scholarship_upto: parseOptionalNumber(mappedCell(row, mapping, "scholarship_upto")),
+          description: mappedCell(row, mapping, "courseDescription"),
+        })
+        .select("id")
+        .single();
+      if (courseError) throw new Error(courseError.message);
+
+      const intakeItems = parseOptionAIntakes(mappedCell(row, mapping, "intakes"));
+      if (intakeItems.length > 0) {
+        const { error: intakeError } = await supabase.from("intakes").insert(
+          intakeItems.map((item) => ({
+            course_id: course.id,
+            intake: item.intake,
+            status: item.status,
+          })),
+        );
+        if (intakeError) throw new Error(intakeError.message);
       }
-    } catch (cleanupErr) {
-      await supabase.from("universities").delete().eq("id", resolvedUniversityId);
-      throw cleanupErr;
+
+      inserted += 1;
+    } catch (error) {
+      failed += 1;
+      errors.push({
+        row: rowNumber,
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   }
 
-  const waiverRaw = optionalTrimmed(formData, "ielts_waiver");
-  const casRaw = optionalTrimmed(formData, "cas_deposit") as CasDepositPolicy | null;
-  const casDepositRequired = casRaw === "required";
-  const ieltsWaiver =
-    waiverRaw && (waiverRaw === "none" || waiverRaw === "b_or_above" || waiverRaw === "c_plus_limited")
-      ? (waiverRaw as IeltsWaiverPolicy)
-      : null;
-
-  const { data: course, error: courseError } = await supabase
-    .from("courses")
-    .insert({
-      university_id: resolvedUniversityId,
-      name: optionalTrimmed(formData, "courseName"),
-      degree: optionalTrimmed(formData, "degree"),
-      duration: optionalTrimmed(formData, "duration"),
-      field: optionalTrimmed(formData, "field"),
-      min_gpa: optionalNumber(formData, "min_gpa"),
-      min_ielts: optionalNumber(formData, "min_ielts"),
-      ielts_waiver: ieltsWaiver,
-      fee: optionalNumber(formData, "fee"),
-      accepted_gap: optionalTrimmed(formData, "accepted_gap"),
-      cas_deposit: casDepositRequired ? "required" : "not_required",
-      cas_deposit_amount: casDepositRequired ? optionalNumber(formData, "cas_deposit_amount") : null,
-      scholarship_upto: optionalNumber(formData, "scholarship_upto"),
-      description: optionalDescription(formData, "courseDescription"),
-    })
-    .select("id")
-    .single();
-
-  if (courseError) throw new Error(courseError.message);
-
-  const intakes = selectedIntakes(formData);
-  const intakeStatus = (optionalTrimmed(formData, "intake_status") ?? "open") as IntakeStatus;
-
-  if (intakes.length > 0) {
-    const { error: intakeError } = await supabase.from("intakes").insert(
-      intakes.map((intake) => ({
-        course_id: course.id,
-        intake,
-        status: intakeStatus,
-      })),
-    );
-
-    if (intakeError) throw new Error(intakeError.message);
-  }
-
-  await persistCourseCatalogSuggestions(supabase, {
-    courseName: optionalTrimmed(formData, "courseName"),
-    degree: optionalTrimmed(formData, "degree"),
-    duration: optionalTrimmed(formData, "duration"),
-    field: optionalTrimmed(formData, "field"),
-  });
-
   revalidateUniversitiesAdmin();
   revalidatePath("/dashboard/course-recommendations");
-  redirect(`${universitiesAdminRoutes.add}?success=course`);
+
+  return {
+    inserted,
+    failed,
+    total: parsed.rows.length,
+    errors: errors.slice(0, 30),
+  };
 }
 
 export async function updateUniversityCourseAction(formData: FormData) {

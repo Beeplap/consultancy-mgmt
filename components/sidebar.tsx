@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, GraduationCap, LayoutDashboard, ListChecks, LogOut, PlusCircle, School } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileSpreadsheet, GraduationCap, LayoutDashboard, ListChecks, LogOut, PlusCircle, School } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import type { UserRole } from "@/lib/database.types";
@@ -23,8 +23,13 @@ export function Sidebar({ user }: { user: { email: string; role: UserRole } }) {
       ? ([
           {
             href: "/dashboard/admin/universities/add",
-            label: "Add university & course",
+            label: "Add university",
             icon: PlusCircle,
+          },
+          {
+            href: "/dashboard/admin/universities/import-courses",
+            label: "Import courses CSV",
+            icon: FileSpreadsheet,
           },
           {
             href: "/dashboard/admin/universities/manage",

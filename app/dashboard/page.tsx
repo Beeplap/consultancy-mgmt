@@ -47,7 +47,13 @@ export default async function DashboardPage() {
               href="/dashboard/admin/universities/add"
               className="inline-flex h-9 items-center rounded-md border border-zinc-300 px-3 font-medium text-zinc-800 hover:bg-zinc-50"
             >
-              Add university & course
+              Add university
+            </Link>
+            <Link
+              href="/dashboard/admin/universities/import-courses"
+              className="inline-flex h-9 items-center rounded-md border border-zinc-300 px-3 font-medium text-zinc-800 hover:bg-zinc-50"
+            >
+              Import courses CSV
             </Link>
             <Link
               href="/dashboard/course-recommendations"
