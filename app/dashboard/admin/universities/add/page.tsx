@@ -38,7 +38,7 @@ export default async function UniversitiesAddPage({ searchParams }: { searchPara
       <section className="rounded-lg border border-zinc-200 bg-white p-6">
         <h2 className="mb-4 text-lg font-semibold">Add university</h2>
         <p className="mb-4 text-sm text-zinc-600">Create an empty university record, or add one while creating a course in the section below.</p>
-        <form action={createUniversityAction} className="grid gap-4">
+        <form action={createUniversityAction} encType="multipart/form-data" className="grid gap-4">
           <div className="grid gap-4 md:grid-cols-4 md:items-end">
             <Field label="Name">
               <Input name="name" />
@@ -50,9 +50,12 @@ export default async function UniversitiesAddPage({ searchParams }: { searchPara
               <Input name="ranking" />
             </Field>
             <div className="flex justify-end md:justify-start">
-              <PendingSubmitButton type="submit" variant="secondary" className="h-10" pendingChildren="Saving...">
+              <button
+                type="submit"
+                className="inline-flex h-10 shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-white px-4 text-sm font-medium text-black transition hover:bg-zinc-50 disabled:opacity-50"
+              >
                 Save university
-              </PendingSubmitButton>
+              </button>
             </div>
           </div>
           <Field label="Description (optional)">

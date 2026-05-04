@@ -181,9 +181,12 @@ export function UniversityCourseForm({
         </Field>
       </div>
       <div className="flex justify-end">
-        <PendingSubmitButton type="submit" pendingChildren="Adding course...">
+        <button
+          type="submit"
+          className="inline-flex h-10 shrink-0 items-center justify-center rounded-md border border-black bg-black px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+        >
           Add course to university
-        </PendingSubmitButton>
+        </button>
       </div>
     </form>
   );

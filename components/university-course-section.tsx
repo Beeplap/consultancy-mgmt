@@ -2,10 +2,8 @@
 
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { deleteUniversityAction } from "@/lib/actions/universities";
-import { Button } from "@/components/ui/button";
-import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { UniversityEditModal, type UniversityEditPayload } from "@/components/university-edit-modal";
+import { UniversityRowActions } from "@/components/university-row-actions";
 
 type UniversityCourseSectionProps = {
   university: UniversityEditPayload;
@@ -25,20 +23,7 @@ export function UniversityCourseSection({ university, children }: UniversityCour
             {[university.location, university.ranking != null ? `Ranking ${university.ranking}` : null].filter(Boolean).join(" · ") || "—"}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="secondary" className="h-9 shrink-0" onClick={() => setEditOpen(true)}>
-            Edit
-          </Button>
-          <form action={deleteUniversityAction} className="inline">
-            <input type="hidden" name="universityId" value={university.id} />
-            <ConfirmSubmitButton
-              message={`Delete ${displayName} and all of its courses?`}
-              className="h-9 shrink-0 px-4"
-            >
-              Delete
-            </ConfirmSubmitButton>
-          </form>
-        </div>
+        <UniversityRowActions universityId={university.id} displayName={displayName} onEdit={() => setEditOpen(true)} />
       </div>
       {children}
       <UniversityEditModal open={editOpen} onOpenChange={setEditOpen} university={university} />
