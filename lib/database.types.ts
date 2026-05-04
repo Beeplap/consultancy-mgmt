@@ -52,8 +52,8 @@ export type Course = {
   degree: string | null;
   duration: string | null;
   field: string | null;
-  min_gpa: number | null;
-  min_ielts: number | null;
+  min_gpa: string | null;
+  min_ielts: string | null;
   ielts_waiver: IeltsWaiverPolicy | null;
   fee: number | null;
   accepted_gap: string | null;

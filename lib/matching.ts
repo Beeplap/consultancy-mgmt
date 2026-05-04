@@ -38,6 +38,16 @@ const gradeRank: Record<EnglishGrade, number> = {
   "A+": 7,
 };
 
+function requirementToNumber(value: string | number | null | undefined) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  const text = (value ?? "").trim();
+  if (!text) return null;
+  const match = text.match(/-?\d+(\.\d+)?/);
+  if (!match) return null;
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function normalizeEnglishGrade(student: MatchingStudent | MatchingCriteria) {
   const grade = "english_grade" in student ? student.english_grade ?? student.englishGrade : student.englishGrade;
   return (grade ?? "").trim().toUpperCase() as EnglishGrade | "";
@@ -103,7 +113,7 @@ function shouldApplyWithWaiver(student: MatchingStudent | MatchingCriteria) {
 export function isCourseEligible(student: MatchingStudent | MatchingCriteria, course: CourseWithUniversity, intake: Intake) {
   if (intake.status === "closed") return false;
   if (student.intake && intake.intake !== student.intake) return false;
-  const minGpa = course.min_gpa;
+  const minGpa = requirementToNumber(course.min_gpa);
   if (student.gpa !== undefined && minGpa != null && student.gpa < minGpa) return false;
   const fee = course.fee;
   if (student.budget !== undefined && fee != null && student.budget < fee) return false;
@@ -112,15 +122,15 @@ export function isCourseEligible(student: MatchingStudent | MatchingCriteria, co
     return acceptsWaiver(course, getIeltsWaiverStatus(student));
   }
 
-  const minIelts = course.min_ielts;
+  const minIelts = requirementToNumber(course.min_ielts);
   if (minIelts == null) return true;
   return student.ielts === undefined || student.ielts >= minIelts;
 }
 
 export function calculateMatchScore(student: MatchingStudent | MatchingCriteria, course: CourseWithUniversity, intake: Intake) {
   const ieltsScore = effectiveIeltsScore(student);
-  const refGpa = course.min_gpa ?? student.gpa ?? 0;
-  const refIelts = course.min_ielts ?? student.ielts ?? 0;
+  const refGpa = requirementToNumber(course.min_gpa) ?? student.gpa ?? 0;
+  const refIelts = requirementToNumber(course.min_ielts) ?? student.ielts ?? 0;
   const refFee = course.fee ?? student.budget ?? 0;
 
   const gpaHeadroom = Math.min(1, Math.max(0, (student.gpa ?? refGpa) - refGpa) / 20);

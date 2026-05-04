@@ -16,6 +16,8 @@ type PageProps = {
     budget?: string;
     intake?: IntakeName;
     course?: string;
+    universityId?: string;
+    sort?: string;
   }>;
 };
 
@@ -34,7 +36,11 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
   const criteria = toCriteria(filters);
   const supabase = await createSupabaseServerClient();
 
-  const { count: universityDirectoryCount } = await supabase.from("universities").select("*", { count: "exact", head: true });
+  const [{ count: universityDirectoryCount }, { data: universityListRaw }] = await Promise.all([
+    supabase.from("universities").select("*", { count: "exact", head: true }),
+    supabase.from("universities").select("id,name").order("name", { nullsFirst: false }),
+  ]);
+  const universityList = universityListRaw ?? [];
 
   let query = supabase
     .from("courses")
@@ -43,13 +49,12 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
     .order("fee", { ascending: true, nullsFirst: false });
 
   if (ranMatch) {
-    if (criteria.gpa !== undefined) query = query.or(`min_gpa.is.null,min_gpa.lte.${criteria.gpa}`);
     if (criteria.budget !== undefined) query = query.or(`fee.is.null,fee.lte.${criteria.budget}`);
     if (criteria.intake) query = query.eq("intakes.intake", criteria.intake);
-    if (!criteria.applyWithWaiver && criteria.ielts !== undefined) {
-      query = query.or(`min_ielts.is.null,min_ielts.lte.${criteria.ielts}`);
-    }
     if (criteria.applyWithWaiver) query = query.neq("ielts_waiver", "none");
+  }
+  if (filters.universityId?.trim()) {
+    query = query.eq("university_id", filters.universityId.trim());
   }
 
   const { data: coursesRaw, error } = await query;
@@ -57,13 +62,12 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
 
   let courses = mergeCourseRows((coursesRaw ?? []) as CourseWithUniversity[]);
 
-  if (ranMatch) {
-    courses = filterCoursePreference(courses, criteria.preferredCourse);
-  }
+  courses = filterCourseSearch(courses, criteria.preferredCourse);
 
-  const rows: CourseTableRow[] = ranMatch
+  let rows: CourseTableRow[] = ranMatch
     ? groupRecommendations(rankCourses(criteria, courses))
     : catalogGroupedRows(courses);
+  rows = sortRows(rows, filters.sort ?? "relevance", ranMatch);
 
   const serializedRows = rows.map((row) => serializeMatchCourseRow(row, ranMatch));
 
@@ -82,7 +86,7 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
       </div>
 
       <section className="rounded-lg border border-zinc-200 bg-white">
-        <MatchFiltersForm filters={filters} />
+        <MatchFiltersForm filters={filters} universities={universityList} />
 
         <div className="border-b border-zinc-200 px-4 py-2 text-sm text-zinc-600">
           {!ranMatch ? (
@@ -95,7 +99,7 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
                   (<span className="font-medium text-zinc-800">{directoryTotal}</span> in directory)
                 </>
               ) : null}
-              . Click <span className="font-medium text-zinc-800">Match</span> to filter.
+              . Use filters to narrow large CSV imports quickly.
             </>
           ) : criteria.applyWithWaiver ? (
             <>
@@ -221,13 +225,48 @@ function toNumber(value: string | undefined) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function filterCoursePreference(courses: CourseWithUniversity[], preference?: string) {
-  if (!preference) return courses;
+function filterCourseSearch(courses: CourseWithUniversity[], rawQuery?: string) {
+  const text = rawQuery?.trim().toLowerCase();
+  if (!text) return courses;
+  const terms = text.split(/\s+/).filter(Boolean);
 
-  const query = preference.toLowerCase();
-  return courses.filter((course) =>
-    `${course.name ?? ""} ${course.field ?? ""} ${course.degree ?? ""}`.toLowerCase().includes(query),
-  );
+  return courses.filter((course) => {
+    const haystack = [
+      course.name,
+      course.field,
+      course.degree,
+      course.duration,
+      course.description,
+      course.universities?.name,
+      course.universities?.location,
+      course.universities?.description,
+      course.accepted_gap,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return terms.every((term) => haystack.includes(term));
+  });
+}
+
+function sortRows(rows: CourseTableRow[], sort: string, ranMatch: boolean) {
+  const items = [...rows];
+  if (sort === "university_az") {
+    return items.sort((a, b) => sortCourses(a.course, b.course));
+  }
+  if (sort === "fee_low_high") {
+    return items.sort((a, b) => (a.course.fee ?? Number.POSITIVE_INFINITY) - (b.course.fee ?? Number.POSITIVE_INFINITY));
+  }
+  if (sort === "fee_high_low") {
+    return items.sort((a, b) => (b.course.fee ?? -1) - (a.course.fee ?? -1));
+  }
+  if (sort === "match_high_low" && ranMatch) {
+    return items.sort((a, b) => (b.matchScore ?? -1) - (a.matchScore ?? -1));
+  }
+  if (ranMatch) {
+    return items.sort((a, b) => (b.matchScore ?? -1) - (a.matchScore ?? -1) || sortCourses(a.course, b.course));
+  }
+  return items.sort((a, b) => sortCourses(a.course, b.course));
 }
 
 function formatWaiver(value: CourseWithUniversity["ielts_waiver"]) {

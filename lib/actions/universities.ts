@@ -43,6 +43,11 @@ function optionalNumber(formData: FormData, key: string) {
   return Number.isFinite(n) ? n : null;
 }
 
+function optionalRequirementText(formData: FormData, key: string) {
+  const raw = String(formData.get(key) ?? "").trim();
+  return raw || null;
+}
+
 /** Preserves line breaks and internal spacing; empty / whitespace-only clears to null. */
 function optionalDescription(formData: FormData, key: string) {
   const raw = formData.get(key);
@@ -236,8 +241,8 @@ export async function importUniversityCoursesCsvAction(formData: FormData) {
           degree: mappedCell(row, mapping, "degree"),
           duration: mappedCell(row, mapping, "duration"),
           field: mappedCell(row, mapping, "field"),
-          min_gpa: parseOptionalNumber(mappedCell(row, mapping, "min_gpa")),
-          min_ielts: parseOptionalNumber(mappedCell(row, mapping, "min_ielts")),
+          min_gpa: mappedCell(row, mapping, "min_gpa"),
+          min_ielts: mappedCell(row, mapping, "min_ielts"),
           ielts_waiver: ieltsWaiver,
           fee: parseOptionalNumber(mappedCell(row, mapping, "fee")),
           accepted_gap: mappedCell(row, mapping, "accepted_gap"),
@@ -307,8 +312,8 @@ export async function updateUniversityCourseAction(formData: FormData) {
       degree: optionalTrimmed(formData, "degree"),
       duration: optionalTrimmed(formData, "duration"),
       field: optionalTrimmed(formData, "field"),
-      min_gpa: optionalNumber(formData, "min_gpa"),
-      min_ielts: optionalNumber(formData, "min_ielts"),
+      min_gpa: optionalRequirementText(formData, "min_gpa"),
+      min_ielts: optionalRequirementText(formData, "min_ielts"),
       ielts_waiver: ieltsWaiver,
       fee: optionalNumber(formData, "fee"),
       accepted_gap: optionalTrimmed(formData, "accepted_gap"),

@@ -16,8 +16,8 @@ export type MatchCourseRowSerialized = {
   courseName: string | null;
   subtitle: string;
   courseDescription: string | null;
-  minGpa: number | null;
-  minIelts: number | null;
+  minGpa: string | null;
+  minIelts: string | null;
   waiver: string;
   fee: string;
   gap: string;
@@ -194,7 +194,7 @@ export function MatchCourseRows({
                             rel="noopener noreferrer"
                             className="group mx-auto mb-2 block max-w-md overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm"
                           >
-                            <div className="relative h-[14rem] w-full sm:h-[18rem]">
+                            <div className="relative h-56 w-full sm:h-72">
                               <Image
                                 src={row.universityCoverUrl}
                                 alt={
