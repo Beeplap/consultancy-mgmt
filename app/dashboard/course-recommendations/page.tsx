@@ -75,7 +75,7 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
   return (
     <div className="grid gap-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Match Student</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Course Match</h1>
         <p className="mt-1 text-sm text-zinc-600">
           Each course is one row. Intakes appear together before Match; filtered results keep the same layout.
         </p>

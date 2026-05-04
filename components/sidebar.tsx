@@ -18,7 +18,7 @@ export function Sidebar({ user }: { user: { email: string; role: UserRole } }) {
   const [collapsed, setCollapsed] = useState(false);
   const links: NavLink[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/dashboard/course-recommendations", label: "Match Student", icon: ListChecks },
+    { href: "/dashboard/course-recommendations", label: "Course Match", icon: ListChecks },
     ...(user.role === "admin"
       ? ([
           {

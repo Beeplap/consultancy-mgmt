@@ -1,9 +1,9 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CourseWithUniversity, Database, EnglishGrade, Intake, IntakeName, Student } from "@/lib/database.types";
+import type { CourseWithUniversity, EnglishGrade, Intake, IntakeName } from "@/lib/database.types";
 
-export type MatchingStudent = Student & {
+export type MatchingStudent = MatchingCriteria & {
   english_grade?: string | null;
-  englishGrade?: string | null;
+  preferred_course?: string | null;
+  preferred_city?: string | null;
 };
 
 export type MatchingCriteria = {
@@ -68,7 +68,8 @@ function effectiveIeltsScore(student: MatchingStudent | MatchingCriteria) {
 }
 
 function preferenceMatch(course: CourseWithUniversity, student: MatchingStudent | MatchingCriteria) {
-  const preference = ("preferred_course" in student ? student.preferred_course : student.preferredCourse ?? "").toLowerCase();
+  const preferenceRaw = "preferred_course" in student ? student.preferred_course : student.preferredCourse;
+  const preference = (preferenceRaw ?? "").toLowerCase();
   if (!preference) return 0.7;
 
   const field = course.field ?? "";
@@ -141,10 +142,6 @@ export function calculateMatchScore(student: MatchingStudent | MatchingCriteria,
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
-export function recommendCourses(student: MatchingStudent, courses: CourseWithUniversity[]): Recommendation[] {
-  return rankCourses(student, courses);
-}
-
 function feeSortKey(course: CourseWithUniversity) {
   return course.fee ?? Number.POSITIVE_INFINITY;
 }
@@ -165,42 +162,4 @@ export function rankCourses(criteria: MatchingStudent | MatchingCriteria, course
       ];
     })
     .sort((a, b) => b.score - a.score || feeSortKey(a.course) - feeSortKey(b.course));
-}
-
-export async function fetchMatchingStudent(supabase: SupabaseClient<Database>, studentId: string) {
-  const { data, error } = await supabase.from("students").select("*").eq("id", studentId).single();
-
-  if (error) throw new Error(error.message);
-  return data as MatchingStudent;
-}
-
-export async function fetchCandidateCourses(supabase: SupabaseClient<Database>, student: MatchingStudent) {
-  const waiver = getIeltsWaiverStatus(student);
-  let query = supabase
-    .from("courses")
-    .select("*, universities(*), intakes!inner(*)")
-    .or(`min_gpa.is.null,min_gpa.lte.${student.gpa}`)
-    .or(`fee.is.null,fee.lte.${student.budget}`)
-    .eq("intakes.intake", student.intake)
-    .neq("intakes.status", "closed")
-    .order("fee", { ascending: true, nullsFirst: false });
-
-  const ieltsLimit =
-    waiver === "waived" ? null : waiver === "limited" ? Math.max(student.ielts, limitedWaiverMaxIeltsRequirement) : student.ielts;
-
-  if (ieltsLimit !== null) {
-    query = query.or(`min_ielts.is.null,min_ielts.lte.${ieltsLimit}`);
-  }
-
-  const { data, error } = await query;
-
-  if (error) throw new Error(error.message);
-  return (data ?? []) as CourseWithUniversity[];
-}
-
-export async function getRankedCourseRecommendations(supabase: SupabaseClient<Database>, studentId: string) {
-  const student = await fetchMatchingStudent(supabase, studentId);
-  const courses = await fetchCandidateCourses(supabase, student);
-
-  return recommendCourses(student, courses);
 }
