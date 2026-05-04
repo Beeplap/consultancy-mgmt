@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SuccessBanner } from "@/components/success-banner";
 import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { UniversityCourseForm } from "@/components/university-form";
 import { Field, Input, Textarea } from "@/components/ui/field";
@@ -9,8 +10,9 @@ import { requireRole } from "@/lib/auth";
 import { universityCoverAcceptAttr } from "@/lib/university-cover";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export default async function UniversitiesAddPage() {
+export default async function UniversitiesAddPage({ searchParams }: { searchParams: Promise<{ success?: string }> }) {
   await requireRole("admin");
+  const { success } = await searchParams;
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.from("universities").select("id, name").order("name", { nullsFirst: false });
   const uniList = (data ?? []).map((u) => ({ id: u.id, name: u.name }));
@@ -18,6 +20,8 @@ export default async function UniversitiesAddPage() {
 
   return (
     <div className="grid gap-7">
+      {success === "university" && <SuccessBanner message="University added successfully!" />}
+      {success === "course" && <SuccessBanner message="Course added successfully!" />}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Add university &amp; course</h1>

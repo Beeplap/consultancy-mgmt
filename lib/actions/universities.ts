@@ -126,6 +126,7 @@ export async function createUniversityAction(formData: FormData) {
 
   revalidateUniversitiesAdmin();
   revalidatePath("/dashboard/course-recommendations");
+  redirect(`${universitiesAdminRoutes.add}?success=university`);
 }
 
 export async function updateUniversityAction(formData: FormData) {
@@ -255,6 +256,7 @@ export async function createUniversityCourseAction(formData: FormData) {
 
   revalidateUniversitiesAdmin();
   revalidatePath("/dashboard/course-recommendations");
+  redirect(`${universitiesAdminRoutes.add}?success=course`);
 }
 
 export async function updateUniversityCourseAction(formData: FormData) {
