@@ -14,7 +14,7 @@ import {
   parseOptionAIntakes,
   parseOptionalNumber,
 } from "@/lib/course-csv-import";
-import type { CasDepositPolicy, IeltsWaiverPolicy, IntakeName, IntakeStatus } from "@/lib/database.types";
+import type { CasDepositPolicy, IntakeName, IntakeStatus } from "@/lib/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { removeUniversityCoverObject, uploadUniversityCover } from "@/lib/university-cover";
 
