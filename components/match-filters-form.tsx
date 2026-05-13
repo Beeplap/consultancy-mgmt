@@ -38,7 +38,7 @@ export function MatchFiltersForm({ filters, universities, cities }: MatchFilters
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
         <Field label="GPA">
-          <Input name="gpa" type="number" step="0.1" min="0" max="100" defaultValue={filters.gpa} placeholder="75" className="h-10 w-full" />
+          <Input name="gpa" type="number" step="0.1" min="0" max="100" defaultValue={filters.gpa} placeholder="2.4" className="h-10 w-full" />
         </Field>
         <Field label="English Grade">
           <Select name="englishGrade" defaultValue={filters.englishGrade ?? ""} className="h-10 w-full">
