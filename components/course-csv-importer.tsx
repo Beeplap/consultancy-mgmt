@@ -212,11 +212,9 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
           </p>
           {importPreview ? (
             <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
-              Preview:{" "}
-              <span className="font-semibold text-zinc-900">{importPreview.adds}</span> new,{" "}
-              <span className="font-semibold text-zinc-900">{importPreview.updates}</span> update
-              {importPreview.updates === 1 ? "" : "s"} across {importPreview.rowsWithCourseName} mapped course row
-              {importPreview.rowsWithCourseName === 1 ? "" : "s"}.
+              Ready to import {importPreview.rowsWithCourseName} course{importPreview.rowsWithCourseName === 1 ? "" : "s"}:{" "}
+              <span className="font-semibold text-zinc-900">{importPreview.adds}</span> will be added and{" "}
+              <span className="font-semibold text-zinc-900">{importPreview.updates}</span> already exist, so they will be updated.
             </div>
           ) : null}
         </>
@@ -314,10 +312,16 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
       {result ? (
         <div className="grid gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm">
           <p>
-            Processed <span className="font-semibold">{result.inserted + result.updated}</span> of{" "}
-            <span className="font-semibold">{result.total}</span> rows. Added:{" "}
-            <span className="font-semibold">{result.inserted}</span>. Updated:{" "}
-            <span className="font-semibold">{result.updated}</span>. Failed: <span className="font-semibold">{result.failed}</span>.
+            Import finished. <span className="font-semibold">{result.inserted}</span> course
+            {result.inserted === 1 ? " was" : "s were"} added and{" "}
+            <span className="font-semibold">{result.updated}</span> existing course
+            {result.updated === 1 ? " was" : "s were"} updated.
+            {result.failed > 0 ? (
+              <>
+                {" "}
+                <span className="font-semibold">{result.failed}</span> row{result.failed === 1 ? "" : "s"} could not be imported.
+              </>
+            ) : null}
           </p>
           {result.errors.length > 0 ? (
             <div className="max-h-52 overflow-auto rounded-md border border-zinc-200 bg-white p-2 text-xs">
