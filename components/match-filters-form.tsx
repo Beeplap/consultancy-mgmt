@@ -13,16 +13,18 @@ type MatchFiltersFormProps = {
     intake?: IntakeName;
     course?: string;
     universityId?: string;
+    city?: string;
     sort?: string;
     _match?: string;
   };
-  universities: Array<{ id: string; name: string | null }>;
+  universities: Array<{ id: string; name: string | null; location: string | null }>;
+  cities: string[];
 };
 
 const englishGrades: EnglishGrade[] = ["A+", "A", "B+", "B", "C+", "C", "D", "E"];
 const intakes: IntakeName[] = ["Jan", "May", "Sep", "Nov"];
 
-export function MatchFiltersForm({ filters, universities }: MatchFiltersFormProps) {
+export function MatchFiltersForm({ filters, universities, cities }: MatchFiltersFormProps) {
   const sortedUniversities = [...universities].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
   return (
     <form method="get" action="/dashboard/course-recommendations" className="grid gap-5 border-b border-zinc-200 p-4 md:p-5">
@@ -33,8 +35,7 @@ export function MatchFiltersForm({ filters, universities }: MatchFiltersFormProp
         Apply with waiver
       </label>
 
-      {/* Row 1: five compact filters — even columns, no cramped sixth cell */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         <Field label="GPA">
           <Input name="gpa" type="number" step="0.1" min="0" max="100" defaultValue={filters.gpa} placeholder="75" className="h-10 w-full" />
         </Field>
@@ -66,6 +67,16 @@ export function MatchFiltersForm({ filters, universities }: MatchFiltersFormProp
             {sortedUniversities.map((u) => (
               <option key={u.id} value={u.id}>
                 {u.name?.trim() || "Unnamed university"}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="UK city">
+          <Select name="city" defaultValue={filters.city ?? ""} className="h-10 w-full">
+            <option value="">All cities</option>
+            {cities.map((city) => (
+              <option key={city} value={city}>
+                {city}
               </option>
             ))}
           </Select>

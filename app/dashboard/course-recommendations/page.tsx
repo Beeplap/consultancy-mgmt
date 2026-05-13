@@ -17,6 +17,7 @@ type PageProps = {
     intake?: IntakeName;
     course?: string;
     universityId?: string;
+    city?: string;
     sort?: string;
   }>;
 };
@@ -38,9 +39,10 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
 
   const [{ count: universityDirectoryCount }, { data: universityListRaw }] = await Promise.all([
     supabase.from("universities").select("*", { count: "exact", head: true }),
-    supabase.from("universities").select("id,name").order("name", { nullsFirst: false }),
+    supabase.from("universities").select("id,name,location").order("name", { nullsFirst: false }),
   ]);
   const universityList = universityListRaw ?? [];
+  const cityOptions = uniqueCities(universityList.map((university) => university.location));
 
   let query = supabase
     .from("courses")
@@ -60,6 +62,7 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
 
   let courses = mergeCourseRows((coursesRaw ?? []) as CourseWithUniversity[]);
 
+  courses = filterCoursesByCity(courses, filters.city);
   courses = filterCourseSearch(courses, criteria.preferredCourse);
 
   let rows: CourseTableRow[] = ranMatch
@@ -84,7 +87,7 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
       </div>
 
       <section className="rounded-lg border border-zinc-200 bg-white">
-        <MatchFiltersForm filters={filters} universities={universityList} />
+        <MatchFiltersForm filters={filters} universities={universityList} cities={cityOptions} />
 
         <div className="border-b border-zinc-200 px-4 py-2 text-sm text-zinc-600">
           {!ranMatch ? (
@@ -255,6 +258,28 @@ function filterCourseSearch(courses: CourseWithUniversity[], rawQuery?: string) 
       .toLowerCase();
     return terms.every((term) => haystack.includes(term));
   });
+}
+
+function uniqueCities(locations: Array<string | null>) {
+  const byNormalized = new Map<string, string>();
+  for (const location of locations) {
+    const city = location?.trim();
+    if (!city) continue;
+    const normalized = normalizeCity(city);
+    if (!byNormalized.has(normalized)) byNormalized.set(normalized, city);
+  }
+  return [...byNormalized.values()].sort((a, b) => a.localeCompare(b));
+}
+
+function filterCoursesByCity(courses: CourseWithUniversity[], city?: string) {
+  const selectedCity = city?.trim();
+  if (!selectedCity) return courses;
+  const normalizedSelectedCity = normalizeCity(selectedCity);
+  return courses.filter((course) => normalizeCity(course.universities?.location ?? "") === normalizedSelectedCity);
+}
+
+function normalizeCity(value: string) {
+  return value.trim().toLowerCase();
 }
 
 function sortRows(rows: CourseTableRow[], sort: string, ranMatch: boolean) {
