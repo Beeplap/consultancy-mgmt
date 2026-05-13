@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { CourseRowActions } from "@/components/course-row-actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { IntakeBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { deleteManyCoursesAction } from "@/lib/actions/universities";
+import { Select } from "@/components/ui/field";
+import { bulkUpdateCourseIntakesAction, deleteManyCoursesAction } from "@/lib/actions/universities";
 import { currencyGBP } from "@/lib/format";
-import type { Course, Intake } from "@/lib/database.types";
+import type { Course, Intake, IntakeName } from "@/lib/database.types";
 
 export type CourseWithIntakesRow = Course & { intakes: Intake[] };
+
+const intakeNames: IntakeName[] = ["Jan", "May", "Sep", "Nov"];
 
 function formatWaiver(value: Course["ielts_waiver"]) {
   if (value === "b_or_above") return "B or above";
@@ -50,15 +53,11 @@ export function UniversityCoursesTable({
     setSelectedIds(checked ? courses.map((course) => course.id) : []);
   }
 
-  useEffect(() => {
-    if (!selectMode) setSelectedIds([]);
-  }, [selectMode]);
-
   return (
     <div className="overflow-x-auto">
       {selectMode ? (
-        <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
-          <form action={deleteManyCoursesAction} className="flex w-full flex-wrap items-center justify-between gap-3">
+        <div className="grid gap-3 border-b border-zinc-200 bg-zinc-50/70 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <label className="inline-flex items-center gap-2 text-sm text-zinc-700">
               <input
                 type="checkbox"
@@ -69,26 +68,61 @@ export function UniversityCoursesTable({
               Select all
             </label>
             <div className="flex items-center gap-2">
-              {selectedIds.map((id) => (
-                <input key={id} type="hidden" name="courseIds" value={id} />
-              ))}
+              <span className="text-sm text-zinc-600">{selectedIds.length} selected</span>
               <Button
                 type="button"
                 variant="secondary"
                 onClick={() => {
+                  setSelectedIds([]);
                   onSelectModeChange(false);
                 }}
               >
                 Cancel
               </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+            <form action={bulkUpdateCourseIntakesAction} className="grid gap-3 rounded-md border border-zinc-200 bg-white p-3 md:grid-cols-[1fr_180px_auto] md:items-end">
+              {selectedIds.map((id) => (
+                <input key={id} type="hidden" name="courseIds" value={id} />
+              ))}
+              <div className="grid gap-2">
+                <span className="text-sm font-medium text-zinc-800">Set intakes for selected courses</span>
+                <div className="flex flex-wrap gap-3">
+                  {intakeNames.map((name) => (
+                    <label key={name} className="inline-flex items-center gap-2 text-sm text-zinc-700">
+                      <input name={`bulk_intake_${name}`} type="checkbox" className="h-4 w-4 rounded border-zinc-300" />
+                      {name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <label className="grid gap-2 text-sm font-medium text-zinc-800">
+                Status
+                <Select name="bulk_intake_status" defaultValue="open" className="h-10 bg-white">
+                  <option value="open">Open</option>
+                  <option value="closing">Closing</option>
+                  <option value="closed">Closed</option>
+                </Select>
+              </label>
+              <Button type="submit" className="h-10" disabled={selectedIds.length === 0}>
+                Apply intakes
+              </Button>
+            </form>
+
+            <form action={deleteManyCoursesAction} className="flex justify-end">
+              {selectedIds.map((id) => (
+                <input key={id} type="hidden" name="courseIds" value={id} />
+              ))}
               <ConfirmSubmitButton
                 message={`Delete ${selectedIds.length} selected course(s)? This cannot be undone.`}
                 className="h-10"
               >
                 Delete selected ({selectedIds.length})
               </ConfirmSubmitButton>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       ) : null}
       <table className="w-full min-w-[1040px] text-left text-sm">
@@ -159,7 +193,7 @@ export function UniversityCoursesTable({
                     ))}
                   </div>
                 )}
-                <p className="mt-2 text-xs text-zinc-400">Edit course to change intakes.</p>
+                <p className="mt-2 text-xs text-zinc-400">Use Select courses to update intakes in bulk.</p>
               </td>
               <td className="px-4 py-4 align-top">
                 {!selectMode ? <CourseRowActions course={course} /> : null}

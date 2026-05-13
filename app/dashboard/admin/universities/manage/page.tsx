@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UniversityCourseSection } from "@/components/university-course-section";
+import { UniversitiesManagementList } from "@/components/universities-management-list";
 import { universitiesAdminRoutes } from "@/lib/admin-universities-paths";
 import { requireRole } from "@/lib/auth";
 import type { Course, Intake, University } from "@/lib/database.types";
@@ -22,7 +22,7 @@ export default async function UniversitiesManagePage() {
     <div className="grid gap-7">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Universities Management</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Universities &amp; Courses Management</h1>
           <p className="mt-1 text-sm text-zinc-600">Edit universities, browse courses &amp; intakes, and delete records.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -43,8 +43,8 @@ export default async function UniversitiesManagePage() {
 
       <section className="rounded-lg border border-zinc-200 bg-white lg:sticky lg:top-4 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:shadow-sm">
         <div className="border-b border-zinc-200 px-5 py-4">
-          <h2 className="text-lg font-semibold tracking-tight">Courses &amp; intakes</h2>
-          <p className="mt-1 text-xs text-zinc-600">Courses and intakes grouped by university.</p>
+          <h2 className="text-lg font-semibold tracking-tight">Universities &amp; courses management</h2>
+          <p className="mt-1 text-xs text-zinc-600">Select a university or type to search, then manage courses and intakes.</p>
         </div>
         {uniRows.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-zinc-500">
@@ -55,22 +55,7 @@ export default async function UniversitiesManagePage() {
             to get started.
           </p>
         ) : (
-          <div>
-            {uniRows.map((university) => (
-              <UniversityCourseSection
-                key={university.id}
-                university={{
-                  id: university.id,
-                  name: university.name,
-                  location: university.location,
-                  ranking: university.ranking,
-                  description: university.description,
-                  photo_path: university.photo_path,
-                }}
-                courses={university.courses}
-              />
-            ))}
-          </div>
+          <UniversitiesManagementList universities={uniRows} />
         )}
       </section>
     </div>

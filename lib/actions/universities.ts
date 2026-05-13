@@ -451,6 +451,58 @@ export async function deleteManyCoursesAction(formData: FormData) {
   revalidatePath("/dashboard/course-recommendations");
 }
 
+export async function bulkUpdateCourseIntakesAction(formData: FormData) {
+  await requireRole("admin");
+  const supabase = await createSupabaseServerClient();
+  const courseIds = formData
+    .getAll("courseIds")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+  if (courseIds.length === 0) throw new Error("Select at least one course to update.");
+
+  const selectedIntakeNames = intakeNames.filter((name) => formData.get(`bulk_intake_${name}`) === "on");
+  if (selectedIntakeNames.length === 0) throw new Error("Select at least one intake month to update.");
+
+  const statusRaw = String(formData.get("bulk_intake_status") ?? "").trim();
+  const intakeStatus: IntakeStatus =
+    statusRaw === "open" || statusRaw === "closing" || statusRaw === "closed" ? statusRaw : "open";
+
+  const { data: existingData, error: fetchError } = await supabase
+    .from("intakes")
+    .select("id, course_id, intake")
+    .in("course_id", courseIds)
+    .in("intake", selectedIntakeNames);
+
+  if (fetchError) throw new Error(fetchError.message);
+
+  const existingRows = existingData ?? [];
+  const existingKeys = new Set(existingRows.map((row) => `${row.course_id}:${row.intake}`));
+  const existingIds = existingRows.map((row) => row.id);
+
+  if (existingIds.length > 0) {
+    const { error } = await supabase.from("intakes").update({ status: intakeStatus }).in("id", existingIds);
+    if (error) throw new Error(error.message);
+  }
+
+  const rowsToInsert = courseIds.flatMap((courseId) =>
+    selectedIntakeNames
+      .filter((intake) => !existingKeys.has(`${courseId}:${intake}`))
+      .map((intake) => ({
+        course_id: courseId,
+        intake,
+        status: intakeStatus,
+      })),
+  );
+
+  if (rowsToInsert.length > 0) {
+    const { error } = await supabase.from("intakes").insert(rowsToInsert);
+    if (error) throw new Error(error.message);
+  }
+
+  revalidateUniversitiesAdmin();
+  revalidatePath("/dashboard/course-recommendations");
+}
+
 export async function deleteUniversityAction(formData: FormData) {
   await requireRole("admin");
   const supabase = await createSupabaseServerClient();

@@ -90,7 +90,7 @@ export function UniversityRowActions({ universityId, displayName, onEdit, onSele
                     onSelectCourses();
                   }}
                 >
-                  Select courses
+                  Bulk edit courses
                 </button>
                 <button
                   type="button"
