@@ -392,10 +392,7 @@ export async function createManualUniversityCourseAction(formData: FormData) {
 
   const waiverRaw = required(formData, "ielts_waiver");
   const casRaw = required(formData, "cas_deposit") as CasDepositPolicy;
-  const ieltsWaiver =
-    waiverRaw === "none" || waiverRaw === "b_or_above" || waiverRaw === "c_plus_limited"
-      ? (waiverRaw as IeltsWaiverPolicy)
-      : null;
+  const ieltsWaiver = parseIeltsWaiverPolicy(waiverRaw);
   if (!ieltsWaiver) throw new Error("Invalid IELTS waiver value.");
 
   const { data: course, error: insertError } = await supabase
@@ -457,10 +454,7 @@ export async function updateUniversityCourseAction(formData: FormData) {
   const waiverRaw = optionalTrimmed(formData, "ielts_waiver");
   const casRaw = optionalTrimmed(formData, "cas_deposit") as CasDepositPolicy | null;
   const casDepositRequired = casRaw === "required";
-  const ieltsWaiver =
-    waiverRaw && (waiverRaw === "none" || waiverRaw === "b_or_above" || waiverRaw === "c_plus_limited")
-      ? (waiverRaw as IeltsWaiverPolicy)
-      : null;
+  const ieltsWaiver = parseIeltsWaiverPolicy(waiverRaw);
 
   const { error } = await supabase
     .from("courses")

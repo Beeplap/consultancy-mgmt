@@ -48,7 +48,7 @@ create table if not exists public.courses (
   min_gpa text,
   min_ielts text,
   min_pte text,
-  ielts_waiver text default 'none' check (ielts_waiver is null or ielts_waiver in ('none', 'b_or_above', 'c_plus_limited')),
+  ielts_waiver text default 'none',
   fee integer,
   accepted_gap text,
   cas_deposit text not null default 'not_required' check (cas_deposit in ('not_required', 'required')),
@@ -91,6 +91,7 @@ begin
 end $$;
 
 alter table public.courses add column if not exists ielts_waiver text default 'none';
+alter table public.courses drop constraint if exists courses_ielts_waiver_check;
 
 alter table public.universities alter column name drop not null;
 alter table public.universities alter column location drop not null;

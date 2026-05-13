@@ -204,7 +204,7 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
             </Button>
           </div>
 
-          {importPreview ? (
+          {importPreview && !result ? (
             <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
               Ready to import {importPreview.rowsWithCourseName} course{importPreview.rowsWithCourseName === 1 ? "" : "s"}:{" "}
               <span className="font-semibold text-zinc-900">{importPreview.adds}</span> will be added and{" "}
@@ -251,6 +251,8 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
                 <option value="none">none</option>
                 <option value="b_or_above">b_or_above</option>
                 <option value="c_plus_limited">c_plus_limited</option>
+                <option value="Yes">Yes</option>
+                <option value="Yes with conditions">Yes with conditions</option>
               </select>
             </label>
             <label className="grid gap-1 text-sm">

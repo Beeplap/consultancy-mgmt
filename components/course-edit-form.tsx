@@ -12,6 +12,7 @@ type UniversityOption = { id: string; name: string | null };
 type CourseWithIntakes = Course & { intakes: Intake[] };
 
 const intakeOrder: Record<IntakeName, number> = { Jan: 0, May: 1, Sep: 2, Nov: 3 };
+const knownWaiverOptions = new Set(["none", "b_or_above", "c_plus_limited", "Yes", "Yes with conditions"]);
 
 function defaultIntakeStatus(intakes: Intake[]): IntakeStatus {
   if (intakes.length === 0) return "open";
@@ -96,6 +97,11 @@ export function CourseEditForm({
             <option value="none">No waiver</option>
             <option value="b_or_above">B or above</option>
             <option value="c_plus_limited">C+ limited</option>
+            <option value="Yes">Yes</option>
+            <option value="Yes with conditions">Yes with conditions</option>
+            {course.ielts_waiver && !knownWaiverOptions.has(course.ielts_waiver) ? (
+              <option value={course.ielts_waiver}>{course.ielts_waiver}</option>
+            ) : null}
           </Select>
         </Field>
         <Field label="Fee">

@@ -66,12 +66,13 @@ export function parseOptionalNumber(input: string | null | undefined) {
 }
 
 export function parseIeltsWaiverPolicy(input: string | null | undefined): IeltsWaiverPolicy | null {
-  const text = (input ?? "").trim().toLowerCase();
+  const raw = (input ?? "").trim();
+  const text = raw.toLowerCase();
   if (!text) return null;
-  if (["none", "no", "no waiver"].includes(text)) return "none";
+  if (["none", "no", "no waiver", "n/a", "na", "-"].includes(text)) return "none";
   if (["b_or_above", "b or above", "borabove", "waiver", "b", "a", "a+", "b+"].includes(text)) return "b_or_above";
   if (["c_plus_limited", "c+ limited", "cpluslimited", "c+limited"].includes(text)) return "c_plus_limited";
-  return null;
+  return raw;
 }
 
 export function parseCasDepositPolicy(input: string | null | undefined): CasDepositPolicy {

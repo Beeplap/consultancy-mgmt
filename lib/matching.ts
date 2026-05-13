@@ -129,12 +129,14 @@ function cityMatch(course: CourseWithUniversity, student: MatchingStudent | Matc
   return loc.toLowerCase().includes(preferredCity.toLowerCase()) ? 1 : 0.62;
 }
 
-function acceptsWaiver(course: CourseWithUniversity, waiver: IeltsWaiverStatus) {
-  const policy = course.ielts_waiver ?? "none";
-  if (waiver === "waived") return policy !== "none";
-  if (waiver === "limited") return policy === "c_plus_limited";
+export function hasEnglishWaiver(value: string | null | undefined) {
+  const policy = (value ?? "").trim().toLowerCase();
+  if (!policy) return false;
+  return !["none", "no", "no waiver", "n/a", "na", "-"].includes(policy);
+}
 
-  return false;
+function acceptsWaiver(course: CourseWithUniversity) {
+  return hasEnglishWaiver(course.ielts_waiver);
 }
 
 function shouldApplyWithWaiver(student: MatchingStudent | MatchingCriteria) {
@@ -152,7 +154,7 @@ export function isCourseEligible(student: MatchingStudent | MatchingCriteria, co
   if (student.budget !== undefined && fee != null && student.budget < fee) return false;
 
   if (shouldApplyWithWaiver(student)) {
-    return acceptsWaiver(course, getIeltsWaiverStatus(student));
+    return acceptsWaiver(course);
   }
 
   return meetsEnglishTestRequirement(student, course);

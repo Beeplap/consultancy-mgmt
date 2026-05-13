@@ -18,7 +18,7 @@ function formatWaiver(value: Course["ielts_waiver"]) {
   if (value === "b_or_above") return "B or above";
   if (value === "c_plus_limited") return "C+ limited";
   if (value === "none") return "No";
-  return "—";
+  return value?.trim() || "—";
 }
 
 function formatCasDeposit(course: Pick<Course, "cas_deposit" | "cas_deposit_amount">) {

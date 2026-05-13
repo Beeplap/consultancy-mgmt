@@ -2,7 +2,7 @@ import { MatchCourseRows, type MatchCourseRowSerialized } from "@/components/mat
 import { MatchFiltersForm } from "@/components/match-filters-form";
 import { currencyGBP } from "@/lib/format";
 import { universityCoverPublicUrl } from "@/lib/university-cover";
-import { getIeltsWaiverStatus, rankCourses, type MatchingCriteria, type Recommendation } from "@/lib/matching";
+import { getIeltsWaiverStatus, hasEnglishWaiver, rankCourses, type MatchingCriteria, type Recommendation } from "@/lib/matching";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { CourseWithUniversity, EnglishGrade, Intake, IntakeName } from "@/lib/database.types";
 
@@ -52,7 +52,6 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
 
   if (ranMatch) {
     if (criteria.budget !== undefined) query = query.or(`fee.is.null,fee.lte.${criteria.budget}`);
-    if (criteria.applyWithWaiver) query = query.neq("ielts_waiver", "none");
   }
   if (filters.universityId?.trim()) {
     query = query.eq("university_id", filters.universityId.trim());
@@ -63,6 +62,9 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
 
   let courses = mergeCourseRows((coursesRaw ?? []) as CourseWithUniversity[]);
 
+  if (criteria.applyWithWaiver) {
+    courses = courses.filter((course) => hasEnglishWaiver(course.ielts_waiver));
+  }
   courses = filterCoursesByCity(courses, filters.city);
   courses = filterCourseSearch(courses, criteria.preferredCourse);
 
@@ -308,7 +310,7 @@ function formatWaiver(value: CourseWithUniversity["ielts_waiver"]) {
   if (value === "b_or_above") return "B or above";
   if (value === "c_plus_limited") return "C+ limited";
   if (value === "none") return "No waiver";
-  return "—";
+  return value?.trim() || "—";
 }
 
 function formatCasLine(course: Pick<CourseWithUniversity, "cas_deposit" | "cas_deposit_amount">) {
@@ -350,7 +352,7 @@ function serializeMatchCourseRow(row: CourseTableRow, ranMatch: boolean): MatchC
 }
 
 function waiverCopy(status: ReturnType<typeof getIeltsWaiverStatus>) {
-  if (status === "waived") return "Waiver on: English grade B or above can apply to universities that accept IELTS waiver.";
-  if (status === "limited") return "Waiver on: English grade C+ only shows universities marked as C+ limited.";
-  return "Waiver on: select English grade B or above, or C+ for limited universities.";
+  if (status === "waived") return "Waiver on: showing courses marked with any waiver option.";
+  if (status === "limited") return "Waiver on: showing courses marked with any waiver option.";
+  return "Waiver on: showing courses marked with any waiver option.";
 }

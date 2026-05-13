@@ -3,7 +3,7 @@ export type StudentStatus = "new" | "applied" | "offer" | "visa" | "enrolled";
 export type IntakeName = "Jan" | "May" | "Sep" | "Nov";
 export type IntakeStatus = "open" | "closed" | "closing";
 export type EnglishGrade = "A+" | "A" | "B+" | "B" | "C+" | "C" | "D" | "E";
-export type IeltsWaiverPolicy = "none" | "b_or_above" | "c_plus_limited";
+export type IeltsWaiverPolicy = string;
 export type CasDepositPolicy = "not_required" | "required";
 
 export type UserProfile = {
