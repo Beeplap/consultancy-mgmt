@@ -21,6 +21,7 @@ function normalizeCourseName(value: string | null | undefined) {
 export function CourseCsvImporter({ universities }: { universities: UniversityOption[] }) {
   const [mode, setMode] = useState<"csv" | "manual">("csv");
   const [selectedUniversity, setSelectedUniversity] = useState("");
+  const [universityQuery, setUniversityQuery] = useState("");
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
   const [csvRows, setCsvRows] = useState<Array<Record<string, string>>>([]);
@@ -35,6 +36,11 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
     () => [...universities].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "")),
     [universities],
   );
+  const filteredUniversities = useMemo(() => {
+    const query = universityQuery.trim().toLowerCase();
+    if (!query) return sortedUniversities;
+    return sortedUniversities.filter((university) => (university.name ?? "").toLowerCase().includes(query));
+  }, [sortedUniversities, universityQuery]);
 
   const requiredMissing = courseCsvFieldDefinitions
     .filter((field) => field.required)
@@ -167,13 +173,27 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
       <div className="grid gap-4 md:grid-cols-2">
         <label className="grid gap-2">
           <span className="text-sm font-medium text-zinc-800">Select university</span>
+          <input
+            value={universityQuery}
+            onChange={(e) => {
+              setUniversityQuery(e.target.value);
+              setSelectedUniversity("");
+            }}
+            placeholder="Type university name to search..."
+            className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm outline-none transition placeholder:text-zinc-400 focus:border-black focus:ring-2 focus:ring-zinc-200"
+          />
           <select
             value={selectedUniversity}
-            onChange={(e) => setSelectedUniversity(e.target.value)}
+            onChange={(e) => {
+              const nextUniversityId = e.target.value;
+              setSelectedUniversity(nextUniversityId);
+              const university = sortedUniversities.find((item) => item.id === nextUniversityId);
+              setUniversityQuery(university?.name?.trim() ?? "");
+            }}
             className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm outline-none transition focus:border-black focus:ring-2 focus:ring-zinc-200"
           >
-            <option value="">Choose saved university</option>
-            {sortedUniversities.map((university) => (
+            <option value="">{filteredUniversities.length === 0 ? "No university matches" : "Choose saved university"}</option>
+            {filteredUniversities.map((university) => (
               <option key={university.id} value={university.id}>
                 {university.name?.trim() || "Unnamed university"}
               </option>
@@ -196,10 +216,10 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
       {mode === "csv" ? (
         <>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="secondary" onClick={() => void detectHeaders()} disabled={!csvFile || pending}>
+            <Button type="button" variant="secondary" onClick={() => void detectHeaders()} disabled={pending}>
               Detect headers
             </Button>
-            <Button type="button" onClick={onImport} disabled={!csvFile || !selectedUniversity || pending}>
+            <Button type="button" onClick={onImport} disabled={pending}>
               {pending ? "Importing..." : "Import all courses"}
             </Button>
           </div>
@@ -298,7 +318,7 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
             </label>
           </div>
           <div className="flex justify-end">
-            <Button type="submit" disabled={pending || !selectedUniversity}>
+            <Button type="submit" disabled={pending}>
               {pending ? "Saving..." : "Save manual course"}
             </Button>
           </div>
@@ -310,7 +330,7 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
       ) : null}
 
       {result ? (
-        <div className="grid gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm">
+        <div className="grid gap-2 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
           <p>
             Import finished. <span className="font-semibold">{result.inserted}</span> course
             {result.inserted === 1 ? " was" : "s were"} added and{" "}
@@ -324,7 +344,7 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
             ) : null}
           </p>
           {result.errors.length > 0 ? (
-            <div className="max-h-52 overflow-auto rounded-md border border-zinc-200 bg-white p-2 text-xs">
+            <div className="max-h-52 overflow-auto rounded-md border border-red-200 bg-white p-2 text-xs text-red-700">
               {result.errors.map((entry) => (
                 <p key={`${entry.row}-${entry.message}`}>Row {entry.row}: {entry.message}</p>
               ))}
