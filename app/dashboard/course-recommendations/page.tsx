@@ -23,7 +23,7 @@ type PageProps = {
   }>;
 };
 
-const intakeRank: Record<IntakeName, number> = { Jan: 0, May: 1, Sep: 2, Nov: 3 };
+const intakeRank: Record<string, number> = { Jan: 0, January: 0, May: 1, Sep: 2, Sept: 2, September: 2, Nov: 3, November: 3 };
 
 /** One row per course; all intakes in one cell. */
 type CourseTableRow = {
@@ -177,7 +177,12 @@ function mergeCourseRows(rows: CourseWithUniversity[]): CourseWithUniversity[] {
 }
 
 function sortIntakes(entries: Array<{ intake: Intake }>) {
-  return [...entries].sort((a, b) => intakeRank[a.intake.intake as IntakeName] - intakeRank[b.intake.intake as IntakeName]);
+  return [...entries].sort((a, b) => {
+    const rankA = intakeRank[a.intake.intake] ?? Number.POSITIVE_INFINITY;
+    const rankB = intakeRank[b.intake.intake] ?? Number.POSITIVE_INFINITY;
+    if (rankA !== rankB) return rankA - rankB;
+    return a.intake.intake.localeCompare(b.intake.intake);
+  });
 }
 
 function catalogGroupedRows(courses: CourseWithUniversity[]): CourseTableRow[] {

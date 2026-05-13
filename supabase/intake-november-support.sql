@@ -1,4 +1,6 @@
--- Enable November intake values for existing databases.
+-- Enable November student intake values for existing databases.
+-- Course intakes are intentionally free text so imported values like
+-- September, Sep-26, or Spring 2026 can be stored exactly as given.
 
 do $$
 begin
@@ -16,7 +18,5 @@ begin
     where table_schema = 'public' and table_name = 'intakes'
   ) then
     alter table public.intakes drop constraint if exists intakes_intake_check;
-    alter table public.intakes
-      add constraint intakes_intake_check check (intake in ('Jan', 'May', 'Sep', 'Nov'));
   end if;
 end $$;

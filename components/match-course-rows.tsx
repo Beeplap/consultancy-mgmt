@@ -4,7 +4,7 @@ import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { Fragment, useState } from "react";
 import { IntakeBadge } from "@/components/ui/badge";
-import type { IntakeStatus, IntakeName } from "@/lib/database.types";
+import type { IntakeStatus } from "@/lib/database.types";
 
 export type MatchCourseRowSerialized = {
   courseId: string;
@@ -13,7 +13,6 @@ export type MatchCourseRowSerialized = {
   universityDescription: string | null;
   /** Public URLs for university-wide gallery images from Supabase Storage. */
   universityPhotoUrls: string[];
-  universityCoverUrl?: string | null;
   courseName: string | null;
   subtitle: string;
   courseDescription: string | null;
@@ -25,7 +24,7 @@ export type MatchCourseRowSerialized = {
   gap: string;
   cas: string;
   scholarship: string;
-  intakeEntries: Array<{ id: string; intake: IntakeName; status: IntakeStatus; score: number | null }>;
+  intakeEntries: Array<{ id: string; intake: string; status: IntakeStatus; score: number | null }>;
   matchScore: number | null;
   ranMatch: boolean;
 };
@@ -254,14 +253,14 @@ export function MatchCourseRows({
                             University photo
                           </h4>
                           <a
-                            href={row.universityCoverUrl ?? ""}
+                            href=""
                             target="_blank"
                             rel="noopener noreferrer"
                             className="group mx-auto mb-2 block max-w-md overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm"
                           >
                             <div className="relative h-56 w-full sm:h-72">
                               <Image
-                                src={row.universityCoverUrl ?? ""}
+                                src=""
                                 alt={
                                   row.universityName
                                     ? `${row.universityName} — cover photo`

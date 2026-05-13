@@ -145,9 +145,19 @@ function shouldApplyWithWaiver(student: MatchingStudent | MatchingCriteria) {
   return Boolean(normalizeEnglishGrade(student));
 }
 
+function intakeMatchesPreference(actual: string, preferred: string) {
+  if (!preferred) return true;
+  const normalized = actual.trim().toLowerCase();
+  if (preferred === "Jan") return normalized.includes("jan");
+  if (preferred === "May") return normalized.includes("may");
+  if (preferred === "Sep") return normalized.includes("sep");
+  if (preferred === "Nov") return normalized.includes("nov");
+  return normalized === preferred.toLowerCase();
+}
+
 export function isCourseEligible(student: MatchingStudent | MatchingCriteria, course: CourseWithUniversity, intake: Intake) {
   if (intake.status === "closed") return false;
-  if (student.intake && intake.intake !== student.intake) return false;
+  if (student.intake && !intakeMatchesPreference(intake.intake, student.intake)) return false;
   const minGpa = requirementToNumber(course.min_gpa);
   if (student.gpa !== undefined && minGpa != null && student.gpa < minGpa) return false;
   const fee = course.fee;
@@ -194,7 +204,7 @@ function feeSortKey(course: CourseWithUniversity) {
 export function rankCourses(criteria: MatchingStudent | MatchingCriteria, courses: CourseWithUniversity[]): Recommendation[] {
   return courses
     .flatMap((course) => {
-      const intake = course.intakes.find((item) => (!criteria.intake || item.intake === criteria.intake) && item.status !== "closed");
+      const intake = course.intakes.find((item) => intakeMatchesPreference(item.intake, criteria.intake ?? "") && item.status !== "closed");
       if (!intake || !isCourseEligible(criteria, course, intake)) return [];
 
       return [

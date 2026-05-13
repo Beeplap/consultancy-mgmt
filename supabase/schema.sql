@@ -68,7 +68,7 @@ create table if not exists public.courses (
 create table if not exists public.intakes (
   id uuid primary key default gen_random_uuid(),
   course_id uuid not null references public.courses(id) on delete cascade,
-  intake text not null check (intake in ('Jan', 'May', 'Sep', 'Nov')),
+  intake text not null,
   status text not null default 'open' check (status in ('open', 'closed', 'closing')),
   created_at timestamptz not null default now(),
   unique (course_id, intake)
@@ -147,8 +147,6 @@ begin
     where table_schema = 'public' and table_name = 'intakes'
   ) then
     alter table public.intakes drop constraint if exists intakes_intake_check;
-    alter table public.intakes
-      add constraint intakes_intake_check check (intake in ('Jan', 'May', 'Sep', 'Nov'));
   end if;
 end $$;
 

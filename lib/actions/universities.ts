@@ -14,7 +14,7 @@ import {
   parseOptionAIntakes,
   parseOptionalNumber,
 } from "@/lib/course-csv-import";
-import type { CasDepositPolicy, IntakeName, IntakeStatus } from "@/lib/database.types";
+import type { CasDepositPolicy, IntakeStatus } from "@/lib/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { removeUniversityCoverObject, uploadUniversityCover } from "@/lib/university-cover";
 
@@ -81,20 +81,25 @@ async function addUniversityPhotoRows(
   return photoPaths;
 }
 
-const intakeNames: IntakeName[] = ["Jan", "May", "Sep", "Nov"];
+const intakeNames = ["Jan", "May", "Sep", "Nov"] as const;
 
-function selectedIntakes(formData: FormData): IntakeName[] {
-  const selected: IntakeName[] = [];
+function selectedIntakes(formData: FormData): string[] {
+  const selected: string[] = [];
   for (const name of intakeNames) {
     if (formData.get(`intake_${name}`) === "on") selected.push(name);
   }
+  const customIntakes = String(formData.get("custom_intakes") ?? "")
+    .split(/[|,;]+/g)
+    .map((value) => value.trim())
+    .filter(Boolean);
+  selected.push(...customIntakes);
   return selected;
 }
 
 async function syncCourseIntakes(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   courseId: string,
-  selected: IntakeName[],
+  selected: string[],
   intakeStatus: IntakeStatus,
 ) {
   const { data: existingData, error: fetchError } = await supabase.from("intakes").select("id, intake").eq("course_id", courseId);
@@ -105,7 +110,7 @@ async function syncCourseIntakes(
   const selectedSet = new Set(selected);
 
   for (const row of existingRows) {
-    if (!selectedSet.has(row.intake as IntakeName)) {
+    if (!selectedSet.has(row.intake)) {
       const { error } = await supabase.from("intakes").delete().eq("id", row.id);
       if (error) throw new Error(error.message);
     }
@@ -116,7 +121,7 @@ async function syncCourseIntakes(
   if (fetch2Error) throw new Error(fetch2Error.message);
 
   const current = currentData ?? [];
-  const byIntake = new Map(current.map((r) => [r.intake as IntakeName, r.id]));
+  const byIntake = new Map(current.map((r) => [r.intake, r.id]));
 
   for (const name of selected) {
     const id = byIntake.get(name);
@@ -237,7 +242,7 @@ function normalizeCourseImportName(value: string | null | undefined) {
 async function upsertCourseIntakes(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   courseId: string,
-  intakeItems: Array<{ intake: IntakeName; status: IntakeStatus }>,
+  intakeItems: Array<{ intake: string; status: IntakeStatus }>,
 ) {
   if (intakeItems.length === 0) return;
 
@@ -252,8 +257,8 @@ async function upsertCourseIntakes(
 
   if (fetchError) throw new Error(fetchError.message);
 
-  const existingByIntake = new Map((existingData ?? []).map((row) => [row.intake as IntakeName, row.id]));
-  const toInsert: Array<{ course_id: string; intake: IntakeName; status: IntakeStatus }> = [];
+  const existingByIntake = new Map((existingData ?? []).map((row) => [row.intake, row.id]));
+  const toInsert: Array<{ course_id: string; intake: string; status: IntakeStatus }> = [];
 
   for (const item of intakeItems) {
     const existingId = existingByIntake.get(item.intake);
@@ -564,7 +569,13 @@ export async function bulkUpdateCourseIntakesAction(formData: FormData) {
     .filter(Boolean);
   if (courseIds.length === 0) throw new Error("Select at least one course to update.");
 
-  const selectedIntakeNames = intakeNames.filter((name) => formData.get(`bulk_intake_${name}`) === "on");
+  const selectedIntakeNames = [
+    ...intakeNames.filter((name) => formData.get(`bulk_intake_${name}`) === "on"),
+    ...String(formData.get("bulk_custom_intakes") ?? "")
+      .split(/[|,;]+/g)
+      .map((value) => value.trim())
+      .filter(Boolean),
+  ];
   if (selectedIntakeNames.length === 0) throw new Error("Select at least one intake month to update.");
 
   const statusRaw = String(formData.get("bulk_intake_status") ?? "").trim();

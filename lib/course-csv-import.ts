@@ -1,4 +1,4 @@
-import type { CasDepositPolicy, IeltsWaiverPolicy, IntakeName, IntakeStatus } from "@/lib/database.types";
+import type { CasDepositPolicy, IeltsWaiverPolicy, IntakeStatus } from "@/lib/database.types";
 
 export const courseCsvFieldDefinitions = [
   { key: "courseName", label: "Course name", required: true },
@@ -81,15 +81,6 @@ export function parseCasDepositPolicy(input: string | null | undefined): CasDepo
   return "not_required";
 }
 
-function toIntakeName(input: string): IntakeName | null {
-  const text = input.trim().toLowerCase();
-  if (text === "jan" || text === "january") return "Jan";
-  if (text === "may") return "May";
-  if (text === "sep" || text === "sept" || text === "september") return "Sep";
-  if (text === "nov" || text === "november") return "Nov";
-  return null;
-}
-
 function toIntakeStatus(input: string): IntakeStatus | null {
   const text = input.trim().toLowerCase();
   if (text === "open") return "open";
@@ -98,16 +89,16 @@ function toIntakeStatus(input: string): IntakeStatus | null {
   return null;
 }
 
-export function parseOptionAIntakes(raw: string | null | undefined): Array<{ intake: IntakeName; status: IntakeStatus }> {
+export function parseOptionAIntakes(raw: string | null | undefined): Array<{ intake: string; status: IntakeStatus }> {
   const text = (raw ?? "").trim();
   if (!text) return [];
   const normalized = text.replace(/[;,]+/g, "|");
   const tokens = normalized.split("|").map((t) => t.trim()).filter(Boolean);
-  const map = new Map<IntakeName, IntakeStatus>();
+  const map = new Map<string, IntakeStatus>();
 
   for (const token of tokens) {
     const [namePart, statusPart] = token.split(":").map((x) => x.trim());
-    const intake = toIntakeName(namePart ?? "");
+    const intake = namePart?.trim();
     if (!intake) continue;
     const status = toIntakeStatus(statusPart ?? "") ?? "open";
     map.set(intake, status);

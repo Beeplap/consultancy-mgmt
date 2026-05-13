@@ -6,18 +6,39 @@ import type { MergedCatalogPresetOptions } from "@/lib/catalog-custom-presets";
 import { updateUniversityCourseAction } from "@/lib/actions/universities";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
-import type { Course, Intake, IntakeName, IntakeStatus } from "@/lib/database.types";
+import type { Course, Intake, IntakeStatus } from "@/lib/database.types";
 
 type UniversityOption = { id: string; name: string | null };
 type CourseWithIntakes = Course & { intakes: Intake[] };
 
-const intakeOrder: Record<IntakeName, number> = { Jan: 0, May: 1, Sep: 2, Nov: 3 };
+const intakeOrder: Record<string, number> = {
+  Jan: 0,
+  January: 0,
+  May: 1,
+  Sep: 2,
+  Sept: 2,
+  September: 2,
+  Nov: 3,
+  November: 3,
+};
 const knownWaiverOptions = new Set(["none", "b_or_above", "c_plus_limited", "Yes", "Yes with conditions"]);
 
 function defaultIntakeStatus(intakes: Intake[]): IntakeStatus {
   if (intakes.length === 0) return "open";
-  const sorted = [...intakes].sort((a, b) => intakeOrder[a.intake] - intakeOrder[b.intake]);
+  const sorted = [...intakes].sort((a, b) => {
+    const rankA = intakeOrder[a.intake] ?? Number.POSITIVE_INFINITY;
+    const rankB = intakeOrder[b.intake] ?? Number.POSITIVE_INFINITY;
+    return rankA - rankB || a.intake.localeCompare(b.intake);
+  });
   return sorted[0].status;
+}
+
+function customIntakeText(intakes: Intake[]) {
+  const known = new Set(["Jan", "May", "Sep", "Nov"]);
+  return intakes
+    .map((intake) => intake.intake)
+    .filter((intake) => !known.has(intake))
+    .join(", ");
 }
 
 export function CourseEditForm({
@@ -165,6 +186,13 @@ export function CourseEditForm({
             </label>
           ))}
         </div>
+        <Field label="Other intake names">
+          <Input
+            name="custom_intakes"
+            defaultValue={customIntakeText(course.intakes)}
+            placeholder="e.g. September, Sep-26, Spring 2026"
+          />
+        </Field>
         <Field label="Status for selected intakes">
           <Select name="intake_status" defaultValue={defaultIntakeStatus(course.intakes)}>
             <option value="open">Open</option>

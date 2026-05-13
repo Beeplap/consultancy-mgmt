@@ -5,7 +5,7 @@ import { CourseRowActions } from "@/components/course-row-actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { IntakeBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/field";
+import { Input, Select } from "@/components/ui/field";
 import { bulkUpdateCourseIntakesAction, deleteManyCoursesAction } from "@/lib/actions/universities";
 import { currencyGBP } from "@/lib/format";
 import type { Course, Intake, IntakeName } from "@/lib/database.types";
@@ -83,7 +83,7 @@ export function UniversityCoursesTable({
           </div>
 
           <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
-            <form action={bulkUpdateCourseIntakesAction} className="grid gap-3 rounded-md border border-zinc-200 bg-white p-3 md:grid-cols-[1fr_180px_auto] md:items-end">
+            <form action={bulkUpdateCourseIntakesAction} className="grid gap-3 rounded-md border border-zinc-200 bg-white p-3 md:grid-cols-[1fr_220px_180px_auto] md:items-end">
               {selectedIds.map((id) => (
                 <input key={id} type="hidden" name="courseIds" value={id} />
               ))}
@@ -98,6 +98,10 @@ export function UniversityCoursesTable({
                   ))}
                 </div>
               </div>
+              <label className="grid gap-2 text-sm font-medium text-zinc-800">
+                Other intakes
+                <Input name="bulk_custom_intakes" placeholder="September, Sep-26" className="h-10 bg-white" />
+              </label>
               <label className="grid gap-2 text-sm font-medium text-zinc-800">
                 Status
                 <Select name="bulk_intake_status" defaultValue="open" className="h-10 bg-white">
