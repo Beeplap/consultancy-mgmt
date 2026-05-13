@@ -87,6 +87,9 @@ export function CourseEditForm({
         <Field label="Minimum IELTS">
           <Input name="min_ielts"  defaultValue={course.min_ielts ?? ""} />
         </Field>
+        <Field label="Minimum PTE">
+          <Input name="min_pte" defaultValue={course.min_pte ?? ""} />
+        </Field>
         <Field label="IELTS waiver">
           <Select name="ielts_waiver" defaultValue={course.ielts_waiver ?? ""}>
             <option value="">—</option>

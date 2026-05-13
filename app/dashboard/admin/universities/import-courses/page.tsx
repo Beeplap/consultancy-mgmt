@@ -7,7 +7,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export default async function ImportCoursesPage() {
   await requireRole("admin");
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.from("universities").select("id, name").order("name", { nullsFirst: false });
+  const { data } = await supabase.from("universities").select("id, name, courses(id, name)").order("name", { nullsFirst: false });
   const universities = data ?? [];
 
   return (

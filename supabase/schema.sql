@@ -47,6 +47,7 @@ create table if not exists public.courses (
   field text,
   min_gpa text,
   min_ielts text,
+  min_pte text,
   ielts_waiver text default 'none' check (ielts_waiver is null or ielts_waiver in ('none', 'b_or_above', 'c_plus_limited')),
   fee integer,
   accepted_gap text,
@@ -100,8 +101,10 @@ alter table public.courses alter column duration drop not null;
 alter table public.courses alter column field drop not null;
 alter table public.courses alter column min_gpa drop not null;
 alter table public.courses alter column min_ielts drop not null;
+alter table public.courses add column if not exists min_pte text;
 alter table public.courses alter column min_gpa type text using min_gpa::text;
 alter table public.courses alter column min_ielts type text using min_ielts::text;
+alter table public.courses alter column min_pte type text using min_pte::text;
 alter table public.courses alter column ielts_waiver drop not null;
 alter table public.courses alter column fee drop not null;
 

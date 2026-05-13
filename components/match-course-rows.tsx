@@ -18,6 +18,7 @@ export type MatchCourseRowSerialized = {
   courseDescription: string | null;
   minGpa: string | null;
   minIelts: string | null;
+  minPte: string | null;
   waiver: string;
   fee: string;
   gap: string;
@@ -82,6 +83,8 @@ export function MatchCourseRows({
                 GPA {row.minGpa ?? "—"}
                 <br />
                 IELTS {row.minIelts ?? "—"}
+                <br />
+                PTE {row.minPte ?? "—"}
               </td>
               <td className="px-4 py-3 align-top">{row.waiver}</td>
               <td className="px-4 py-3 align-top">{row.fee}</td>
@@ -132,9 +135,9 @@ export function MatchCourseRows({
                         <dd>{row.subtitle}</dd>
                       </div>
                       <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 border-b border-zinc-100 pb-2">
-                        <dt className="text-zinc-500">GPA / IELTS</dt>
+                        <dt className="text-zinc-500">GPA / IELTS / PTE</dt>
                         <dd>
-                          {row.minGpa ?? "—"} / {row.minIelts ?? "—"}
+                          {row.minGpa ?? "—"} / {row.minIelts ?? "—"} / {row.minPte ?? "—"}
                         </dd>
                       </div>
                       <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 border-b border-zinc-100 pb-2">

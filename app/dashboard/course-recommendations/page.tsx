@@ -13,6 +13,7 @@ type PageProps = {
     englishGrade?: EnglishGrade;
     waiver?: string;
     ielts?: string;
+    pte?: string;
     budget?: string;
     intake?: IntakeName;
     course?: string;
@@ -109,7 +110,7 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
             </>
           ) : (
             <>
-              Waiver off: IELTS filters apply when set. <span className="font-medium text-zinc-800">{rows.length}</span> matching courses ·{" "}
+              Waiver off: IELTS/PTE filters apply when set. <span className="font-medium text-zinc-800">{rows.length}</span> matching courses ·{" "}
               <span className="font-medium text-zinc-800">{uniqueUniversities}</span> universities.
             </>
           )}
@@ -223,6 +224,7 @@ function toCriteria(filters: Awaited<PageProps["searchParams"]>): MatchingCriter
     englishGrade: filters.englishGrade || null,
     applyWithWaiver: filters.waiver === "1",
     ielts: toNumber(filters.ielts),
+    pte: toNumber(filters.pte),
     budget: toNumber(filters.budget),
     intake: filters.intake ?? "",
     preferredCourse: filters.course?.trim(),
@@ -330,6 +332,7 @@ function serializeMatchCourseRow(row: CourseTableRow, ranMatch: boolean): MatchC
     courseDescription: c.description ?? null,
     minGpa: c.min_gpa,
     minIelts: c.min_ielts,
+    minPte: c.min_pte,
     waiver: formatWaiver(c.ielts_waiver),
     fee: currencyGBP(c.fee),
     gap: c.accepted_gap?.trim() || "—",

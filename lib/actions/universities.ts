@@ -196,6 +196,47 @@ function mappedCell(row: Record<string, string>, mapping: CourseCsvMapping, key:
   return trimmed;
 }
 
+function normalizeCourseImportName(value: string | null | undefined) {
+  return (value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+async function upsertCourseIntakes(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  courseId: string,
+  intakeItems: Array<{ intake: IntakeName; status: IntakeStatus }>,
+) {
+  if (intakeItems.length === 0) return;
+
+  const { data: existingData, error: fetchError } = await supabase
+    .from("intakes")
+    .select("id, intake")
+    .eq("course_id", courseId)
+    .in(
+      "intake",
+      intakeItems.map((item) => item.intake),
+    );
+
+  if (fetchError) throw new Error(fetchError.message);
+
+  const existingByIntake = new Map((existingData ?? []).map((row) => [row.intake as IntakeName, row.id]));
+  const toInsert: Array<{ course_id: string; intake: IntakeName; status: IntakeStatus }> = [];
+
+  for (const item of intakeItems) {
+    const existingId = existingByIntake.get(item.intake);
+    if (existingId) {
+      const { error } = await supabase.from("intakes").update({ status: item.status }).eq("id", existingId);
+      if (error) throw new Error(error.message);
+    } else {
+      toInsert.push({ course_id: courseId, intake: item.intake, status: item.status });
+    }
+  }
+
+  if (toInsert.length > 0) {
+    const { error } = await supabase.from("intakes").insert(toInsert);
+    if (error) throw new Error(error.message);
+  }
+}
+
 export async function importUniversityCoursesCsvAction(formData: FormData) {
   await requireRole("admin");
   const supabase = await createSupabaseServerClient();
@@ -227,8 +268,21 @@ export async function importUniversityCoursesCsvAction(formData: FormData) {
   }
 
   let inserted = 0;
+  let updated = 0;
   let failed = 0;
   const errors: Array<{ row: number; message: string }> = [];
+
+  const { data: existingCoursesRaw, error: existingCoursesError } = await supabase
+    .from("courses")
+    .select("id,name")
+    .eq("university_id", universityId);
+  if (existingCoursesError) throw new Error(existingCoursesError.message);
+
+  const existingCourseByName = new Map(
+    (existingCoursesRaw ?? [])
+      .map((course) => [normalizeCourseImportName(course.name), course.id] as const)
+      .filter(([name]) => Boolean(name)),
+  );
 
   for (let idx = 0; idx < parsed.rows.length; idx += 1) {
     const row = parsed.rows[idx];
@@ -239,43 +293,62 @@ export async function importUniversityCoursesCsvAction(formData: FormData) {
 
       const ieltsWaiver = parseIeltsWaiverPolicy(mappedCell(row, mapping, "ielts_waiver"));
       const casDeposit = parseCasDepositPolicy(mappedCell(row, mapping, "cas_deposit"));
+      const coursePayload = {
+        university_id: universityId,
+        name: courseName,
+        degree: mappedCell(row, mapping, "degree"),
+        duration: mappedCell(row, mapping, "duration"),
+        field: mappedCell(row, mapping, "field"),
+        min_gpa: mappedCell(row, mapping, "min_gpa"),
+        min_ielts: mappedCell(row, mapping, "min_ielts"),
+        min_pte: mappedCell(row, mapping, "min_pte"),
+        ielts_waiver: ieltsWaiver,
+        fee: parseOptionalNumber(mappedCell(row, mapping, "fee")),
+        accepted_gap: mappedCell(row, mapping, "accepted_gap"),
+        cas_deposit: casDeposit,
+        cas_deposit_amount:
+          casDeposit === "required" ? parseOptionalNumber(mappedCell(row, mapping, "cas_deposit_amount")) : null,
+        scholarship_upto: parseOptionalNumber(mappedCell(row, mapping, "scholarship_upto")),
+        description: mappedCell(row, mapping, "courseDescription"),
+      };
+      const courseUpdatePayload: Partial<typeof coursePayload> = { name: courseName };
 
-      const { data: course, error: courseError } = await supabase
-        .from("courses")
-        .insert({
-          university_id: universityId,
-          name: courseName,
-          degree: mappedCell(row, mapping, "degree"),
-          duration: mappedCell(row, mapping, "duration"),
-          field: mappedCell(row, mapping, "field"),
-          min_gpa: mappedCell(row, mapping, "min_gpa"),
-          min_ielts: mappedCell(row, mapping, "min_ielts"),
-          ielts_waiver: ieltsWaiver,
-          fee: parseOptionalNumber(mappedCell(row, mapping, "fee")),
-          accepted_gap: mappedCell(row, mapping, "accepted_gap"),
-          cas_deposit: casDeposit,
-          cas_deposit_amount:
-            casDeposit === "required" ? parseOptionalNumber(mappedCell(row, mapping, "cas_deposit_amount")) : null,
-          scholarship_upto: parseOptionalNumber(mappedCell(row, mapping, "scholarship_upto")),
-          description: mappedCell(row, mapping, "courseDescription"),
-        })
-        .select("id")
-        .single();
-      if (courseError) throw new Error(courseError.message);
+      if (mapping.degree) courseUpdatePayload.degree = coursePayload.degree;
+      if (mapping.duration) courseUpdatePayload.duration = coursePayload.duration;
+      if (mapping.field) courseUpdatePayload.field = coursePayload.field;
+      if (mapping.min_gpa) courseUpdatePayload.min_gpa = coursePayload.min_gpa;
+      if (mapping.min_ielts) courseUpdatePayload.min_ielts = coursePayload.min_ielts;
+      if (mapping.min_pte) courseUpdatePayload.min_pte = coursePayload.min_pte;
+      if (mapping.ielts_waiver) courseUpdatePayload.ielts_waiver = coursePayload.ielts_waiver;
+      if (mapping.fee) courseUpdatePayload.fee = coursePayload.fee;
+      if (mapping.accepted_gap) courseUpdatePayload.accepted_gap = coursePayload.accepted_gap;
+      if (mapping.cas_deposit) courseUpdatePayload.cas_deposit = coursePayload.cas_deposit;
+      if (mapping.cas_deposit_amount) courseUpdatePayload.cas_deposit_amount = coursePayload.cas_deposit_amount;
+      if (mapping.scholarship_upto) courseUpdatePayload.scholarship_upto = coursePayload.scholarship_upto;
+      if (mapping.courseDescription) courseUpdatePayload.description = coursePayload.description;
+
+      const normalizedCourseName = normalizeCourseImportName(courseName);
+      const existingCourseId = existingCourseByName.get(normalizedCourseName);
 
       const intakeItems = parseOptionAIntakes(mappedCell(row, mapping, "intakes"));
-      if (intakeItems.length > 0) {
-        const { error: intakeError } = await supabase.from("intakes").insert(
-          intakeItems.map((item) => ({
-            course_id: course.id,
-            intake: item.intake,
-            status: item.status,
-          })),
-        );
-        if (intakeError) throw new Error(intakeError.message);
-      }
+      if (existingCourseId) {
+        const { error: courseError } = await supabase.from("courses").update(courseUpdatePayload).eq("id", existingCourseId);
+        if (courseError) throw new Error(courseError.message);
 
-      inserted += 1;
+        await upsertCourseIntakes(supabase, existingCourseId, intakeItems);
+        updated += 1;
+      } else {
+        const { data: course, error: courseError } = await supabase
+          .from("courses")
+          .insert(coursePayload)
+          .select("id")
+          .single();
+        if (courseError) throw new Error(courseError.message);
+
+        existingCourseByName.set(normalizedCourseName, course.id);
+        await upsertCourseIntakes(supabase, course.id, intakeItems);
+        inserted += 1;
+      }
     } catch (error) {
       failed += 1;
       errors.push({
@@ -290,6 +363,7 @@ export async function importUniversityCoursesCsvAction(formData: FormData) {
 
   return {
     inserted,
+    updated,
     failed,
     total: parsed.rows.length,
     errors: errors.slice(0, 30),
@@ -334,6 +408,7 @@ export async function createManualUniversityCourseAction(formData: FormData) {
       field: required(formData, "field"),
       min_gpa: required(formData, "min_gpa"),
       min_ielts: required(formData, "min_ielts"),
+      min_pte: optionalRequirementText(formData, "min_pte"),
       ielts_waiver: ieltsWaiver,
       fee: requiredNumber(formData, "fee"),
       accepted_gap: required(formData, "accepted_gap"),
@@ -397,6 +472,7 @@ export async function updateUniversityCourseAction(formData: FormData) {
       field: optionalTrimmed(formData, "field"),
       min_gpa: optionalRequirementText(formData, "min_gpa"),
       min_ielts: optionalRequirementText(formData, "min_ielts"),
+      min_pte: optionalRequirementText(formData, "min_pte"),
       ielts_waiver: ieltsWaiver,
       fee: optionalNumber(formData, "fee"),
       accepted_gap: optionalTrimmed(formData, "accepted_gap"),

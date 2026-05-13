@@ -11,6 +11,7 @@ export type MatchingCriteria = {
   englishGrade?: EnglishGrade | null;
   applyWithWaiver?: boolean;
   ielts?: number;
+  pte?: number;
   budget?: number;
   intake?: IntakeName | "";
   preferredCourse?: string;
@@ -77,6 +78,38 @@ function effectiveIeltsScore(student: MatchingStudent | MatchingCriteria) {
   return ielts;
 }
 
+function englishTestHeadroom(student: MatchingStudent | MatchingCriteria, course: CourseWithUniversity) {
+  const checks: number[] = [];
+  const minIelts = requirementToNumber(course.min_ielts);
+  const minPte = requirementToNumber(course.min_pte);
+
+  if (student.ielts !== undefined && minIelts != null) {
+    checks.push(Math.min(1, Math.max(0, student.ielts - minIelts) / 2));
+  }
+  if (student.pte !== undefined && minPte != null) {
+    checks.push(Math.min(1, Math.max(0, student.pte - minPte) / 20));
+  }
+
+  if (checks.length === 0) return 0;
+  return Math.max(...checks);
+}
+
+function meetsEnglishTestRequirement(student: MatchingStudent | MatchingCriteria, course: CourseWithUniversity) {
+  const checks: boolean[] = [];
+  const minIelts = requirementToNumber(course.min_ielts);
+  const minPte = requirementToNumber(course.min_pte);
+
+  if (student.ielts !== undefined && minIelts != null) {
+    checks.push(student.ielts >= minIelts);
+  }
+  if (student.pte !== undefined && minPte != null) {
+    checks.push(student.pte >= minPte);
+  }
+
+  if (checks.length === 0) return true;
+  return checks.some(Boolean);
+}
+
 function preferenceMatch(course: CourseWithUniversity, student: MatchingStudent | MatchingCriteria) {
   const preferenceRaw = "preferred_course" in student ? student.preferred_course : student.preferredCourse;
   const preference = (preferenceRaw ?? "").toLowerCase();
@@ -122,9 +155,7 @@ export function isCourseEligible(student: MatchingStudent | MatchingCriteria, co
     return acceptsWaiver(course, getIeltsWaiverStatus(student));
   }
 
-  const minIelts = requirementToNumber(course.min_ielts);
-  if (minIelts == null) return true;
-  return student.ielts === undefined || student.ielts >= minIelts;
+  return meetsEnglishTestRequirement(student, course);
 }
 
 export function calculateMatchScore(student: MatchingStudent | MatchingCriteria, course: CourseWithUniversity, intake: Intake) {
@@ -134,7 +165,9 @@ export function calculateMatchScore(student: MatchingStudent | MatchingCriteria,
   const refFee = course.fee ?? student.budget ?? 0;
 
   const gpaHeadroom = Math.min(1, Math.max(0, (student.gpa ?? refGpa) - refGpa) / 20);
-  const ieltsHeadroom = Number.isFinite(ieltsScore) ? Math.min(1, Math.max(0, ieltsScore - refIelts) / 2) : 1;
+  const ieltsHeadroom = Number.isFinite(ieltsScore)
+    ? Math.max(Math.min(1, Math.max(0, ieltsScore - refIelts) / 2), englishTestHeadroom(student, course))
+    : 1;
   const budgetHeadroom = Math.min(1, Math.max(0, (student.budget ?? refFee) - refFee) / Math.max(refFee, 1));
   const coursePreference = preferenceMatch(course, student);
   const cityPreference = cityMatch(course, student);

@@ -171,6 +171,8 @@ export function UniversityCoursesTable({
                 <br />
                 IELTS {course.min_ielts ?? "—"}
                 <br />
+                PTE {course.min_pte ?? "—"}
+                <br />
                 Waiver {formatWaiver(course.ielts_waiver)}
               </td>
               <td className="px-4 py-4">{currencyGBP(course.fee)}</td>

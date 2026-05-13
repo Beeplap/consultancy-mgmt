@@ -9,15 +9,21 @@ import { Button } from "@/components/ui/button";
 type UniversityOption = {
   id: string;
   name: string | null;
+  courses?: Array<{ id: string; name: string | null }>;
 };
 
 type ImportResult = Awaited<ReturnType<typeof importUniversityCoursesCsvAction>>;
+
+function normalizeCourseName(value: string | null | undefined) {
+  return (value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
 
 export function CourseCsvImporter({ universities }: { universities: UniversityOption[] }) {
   const [mode, setMode] = useState<"csv" | "manual">("csv");
   const [selectedUniversity, setSelectedUniversity] = useState("");
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
+  const [csvRows, setCsvRows] = useState<Array<Record<string, string>>>([]);
   const [previewRows, setPreviewRows] = useState<Array<Record<string, string>>>([]);
   const [mapping, setMapping] = useState<CourseCsvMapping>({});
   const [mapperOpen, setMapperOpen] = useState(false);
@@ -34,6 +40,35 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
     .filter((field) => field.required)
     .some((field) => !mapping[field.key]);
 
+  const selectedUniversityCourses = useMemo(
+    () => sortedUniversities.find((university) => university.id === selectedUniversity)?.courses ?? [],
+    [selectedUniversity, sortedUniversities],
+  );
+
+  const importPreview = useMemo(() => {
+    const courseNameHeader = mapping.courseName;
+    if (!selectedUniversity || !courseNameHeader || csvRows.length === 0) return null;
+
+    const existingNames = new Set(selectedUniversityCourses.map((course) => normalizeCourseName(course.name)).filter(Boolean));
+    let rowsWithCourseName = 0;
+    let adds = 0;
+    let updates = 0;
+
+    for (const row of csvRows) {
+      const courseName = normalizeCourseName(row[courseNameHeader]);
+      if (!courseName) continue;
+      rowsWithCourseName += 1;
+      if (existingNames.has(courseName)) {
+        updates += 1;
+      } else {
+        adds += 1;
+        existingNames.add(courseName);
+      }
+    }
+
+    return { adds, updates, rowsWithCourseName };
+  }, [csvRows, mapping.courseName, selectedUniversity, selectedUniversityCourses]);
+
   async function detectHeaders() {
     if (!csvFile) {
       setErrorMessage("Please choose a CSV file first.");
@@ -46,6 +81,7 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
       return;
     }
     setHeaders(parsed.headers);
+    setCsvRows(parsed.rows);
     setPreviewRows(parsed.rows.slice(0, 5));
     setMapping(autoMapCsvHeaders(parsed.headers));
     setMapperOpen(true);
@@ -172,8 +208,17 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
             Intakes can be given as months only, for example <span className="font-medium">September, November</span>. Optional status format is
             still supported: <span className="font-medium">Jan:open|May:closed|Sep:closing|Nov:open</span>. Month-only values default to{" "}
             <span className="font-medium">open</span>. Empty values and <span className="font-medium">Not specified</span> are stored as blank.
-            Duplicate courses under the same university are inserted as separate records.
+            If a CSV course name already exists under the selected university, import updates that course instead of creating a duplicate.
           </p>
+          {importPreview ? (
+            <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
+              Preview:{" "}
+              <span className="font-semibold text-zinc-900">{importPreview.adds}</span> new,{" "}
+              <span className="font-semibold text-zinc-900">{importPreview.updates}</span> update
+              {importPreview.updates === 1 ? "" : "s"} across {importPreview.rowsWithCourseName} mapped course row
+              {importPreview.rowsWithCourseName === 1 ? "" : "s"}.
+            </div>
+          ) : null}
         </>
       ) : (
         <form action={onManualSubmit} className="grid gap-4 rounded-lg border border-zinc-200 bg-zinc-50/60 p-4">
@@ -202,6 +247,10 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
             <label className="grid gap-1 text-sm">
               <span className="font-medium text-zinc-800">Minimum IELTS *</span>
               <input name="min_ielts" required className="h-10 rounded-md border border-zinc-300 bg-white px-3" />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium text-zinc-800">Minimum PTE</span>
+              <input name="min_pte" className="h-10 rounded-md border border-zinc-300 bg-white px-3" />
             </label>
             <label className="grid gap-1 text-sm">
               <span className="font-medium text-zinc-800">IELTS waiver *</span>
@@ -265,8 +314,10 @@ export function CourseCsvImporter({ universities }: { universities: UniversityOp
       {result ? (
         <div className="grid gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm">
           <p>
-            Imported <span className="font-semibold">{result.inserted}</span> of <span className="font-semibold">{result.total}</span>{" "}
-            rows. Failed: <span className="font-semibold">{result.failed}</span>.
+            Processed <span className="font-semibold">{result.inserted + result.updated}</span> of{" "}
+            <span className="font-semibold">{result.total}</span> rows. Added:{" "}
+            <span className="font-semibold">{result.inserted}</span>. Updated:{" "}
+            <span className="font-semibold">{result.updated}</span>. Failed: <span className="font-semibold">{result.failed}</span>.
           </p>
           {result.errors.length > 0 ? (
             <div className="max-h-52 overflow-auto rounded-md border border-zinc-200 bg-white p-2 text-xs">

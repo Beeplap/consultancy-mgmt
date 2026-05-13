@@ -9,6 +9,7 @@ type MatchFiltersFormProps = {
     englishGrade?: EnglishGrade;
     waiver?: string;
     ielts?: string;
+    pte?: string;
     budget?: string;
     intake?: IntakeName;
     course?: string;
@@ -35,7 +36,7 @@ export function MatchFiltersForm({ filters, universities, cities }: MatchFilters
         Apply with waiver
       </label>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
         <Field label="GPA">
           <Input name="gpa" type="number" step="0.1" min="0" max="100" defaultValue={filters.gpa} placeholder="75" className="h-10 w-full" />
         </Field>
@@ -49,6 +50,9 @@ export function MatchFiltersForm({ filters, universities, cities }: MatchFilters
         </Field>
         <Field label="IELTS">
           <Input name="ielts" type="number" step="0.1" min="0" max="9" defaultValue={filters.ielts} placeholder="6.0" className="h-10 w-full" />
+        </Field>
+        <Field label="PTE">
+          <Input name="pte" type="number" step="1" min="0" max="90" defaultValue={filters.pte} placeholder="60" className="h-10 w-full" />
         </Field>
         <Field label="Budget (£)">
           <Input name="budget" type="number" min="0" defaultValue={filters.budget} placeholder="12000" className="h-10 w-full" />
