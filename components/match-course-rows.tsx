@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { Fragment, useState } from "react";
 import { IntakeBadge } from "@/components/ui/badge";
@@ -11,8 +11,9 @@ export type MatchCourseRowSerialized = {
   universityName: string | null;
   universityLocation: string | null;
   universityDescription: string | null;
-  /** Public URL for one university-wide cover image from Supabase Storage. */
-  universityCoverUrl: string | null;
+  /** Public URLs for university-wide gallery images from Supabase Storage. */
+  universityPhotoUrls: string[];
+  universityCoverUrl?: string | null;
   courseName: string | null;
   subtitle: string;
   courseDescription: string | null;
@@ -28,6 +29,66 @@ export type MatchCourseRowSerialized = {
   matchScore: number | null;
   ranMatch: boolean;
 };
+
+function UniversityPhotoGallery({ urls, universityName }: { urls: string[]; universityName: string | null }) {
+  const [index, setIndex] = useState(0);
+  if (urls.length === 0) return null;
+
+  const currentIndex = Math.min(index, urls.length - 1);
+  const currentUrl = urls[currentIndex] ?? urls[0];
+  if (!currentUrl) return null;
+  const hasMultiple = urls.length > 1;
+
+  return (
+    <section>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">University photos</h4>
+        {hasMultiple ? (
+          <span className="text-xs text-zinc-500">
+            {currentIndex + 1} / {urls.length}
+          </span>
+        ) : null}
+      </div>
+      <div className="mx-auto mb-2 max-w-md">
+        <div className="relative overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+          <a href={currentUrl} target="_blank" rel="noopener noreferrer" className="group block">
+            <div className="relative h-56 w-full sm:h-72">
+              <Image
+                src={currentUrl}
+                alt={universityName ? `${universityName} photo` : "University photo"}
+                fill
+                sizes="(max-width: 768px) 100vw, 448px"
+                className="object-cover object-center transition group-hover:opacity-95"
+              />
+            </div>
+            <span className="sr-only">Open selected university image full screen in new tab</span>
+          </a>
+          {hasMultiple ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setIndex((value) => (value === 0 ? urls.length - 1 : value - 1))}
+                className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-zinc-800 shadow hover:bg-white"
+                aria-label="Previous university photo"
+              >
+                <ChevronLeft className="h-5 w-5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIndex((value) => (value + 1) % urls.length)}
+                className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-zinc-800 shadow hover:bg-white"
+                aria-label="Next university photo"
+              >
+                <ChevronRight className="h-5 w-5" aria-hidden />
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
+      <p className="text-[11px] text-zinc-500">Click the photo to open it full size in a new tab.</p>
+    </section>
+  );
+}
 
 export function MatchCourseRows({
   rows,
@@ -186,20 +247,21 @@ export function MatchCourseRows({
                       ) : null}
                     </dl>
                     <div className="space-y-5">
-                      {row.universityCoverUrl ? (
+                      <UniversityPhotoGallery urls={row.universityPhotoUrls} universityName={row.universityName} />
+                      {false ? (
                         <section>
                           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                             University photo
                           </h4>
                           <a
-                            href={row.universityCoverUrl}
+                            href={row.universityCoverUrl ?? ""}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="group mx-auto mb-2 block max-w-md overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm"
                           >
                             <div className="relative h-56 w-full sm:h-72">
                               <Image
-                                src={row.universityCoverUrl}
+                                src={row.universityCoverUrl ?? ""}
                                 alt={
                                   row.universityName
                                     ? `${row.universityName} — cover photo`

@@ -4,7 +4,7 @@ import { currencyGBP } from "@/lib/format";
 import { universityCoverPublicUrl } from "@/lib/university-cover";
 import { getIeltsWaiverStatus, hasEnglishWaiver, rankCourses, type MatchingCriteria, type Recommendation } from "@/lib/matching";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { CourseWithUniversity, EnglishGrade, Intake, IntakeName } from "@/lib/database.types";
+import type { CourseWithUniversity, EnglishGrade, Intake, IntakeName, UniversityPhoto } from "@/lib/database.types";
 
 type PageProps = {
   searchParams: Promise<{
@@ -32,6 +32,10 @@ type CourseTableRow = {
   matchScore: number | null;
 };
 
+type UniversityWithPhotos = NonNullable<CourseWithUniversity["universities"]> & {
+  university_photos?: UniversityPhoto[];
+};
+
 export default async function CourseRecommendationsPage({ searchParams }: PageProps) {
   const filters = await searchParams;
   const ranMatch = filters._match === "1";
@@ -47,7 +51,7 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
 
   let query = supabase
     .from("courses")
-    .select("*, universities(*), intakes(*)")
+    .select("*, universities(*, university_photos(*)), intakes(*)")
     .order("fee", { ascending: true, nullsFirst: false });
 
   if (ranMatch) {
@@ -163,7 +167,10 @@ function mergeCourseRows(rows: CourseWithUniversity[]): CourseWithUniversity[] {
         ...prev.universities,
         description: prev.universities.description ?? row.universities.description,
         photo_path: prev.universities.photo_path ?? row.universities.photo_path,
-      };
+        university_photos:
+          (prev.universities as UniversityWithPhotos).university_photos ??
+          (row.universities as UniversityWithPhotos).university_photos,
+      } as UniversityWithPhotos;
     }
   }
   return [...byId.values()];
@@ -321,14 +328,20 @@ function formatCasLine(course: Pick<CourseWithUniversity, "cas_deposit" | "cas_d
 
 function serializeMatchCourseRow(row: CourseTableRow, ranMatch: boolean): MatchCourseRowSerialized {
   const c = row.course;
+  const university = c.universities as UniversityWithPhotos | null;
+  const galleryUrls = [
+    ...(university?.university_photos ?? []).map((photo) => universityCoverPublicUrl(photo.photo_path)),
+    universityCoverPublicUrl(university?.photo_path ?? null),
+  ].filter((url): url is string => Boolean(url));
+  const uniqueGalleryUrls = [...new Set(galleryUrls)];
   const scholarship =
     c.scholarship_upto != null ? `Up to ${currencyGBP(c.scholarship_upto)}` : "—";
   return {
     courseId: c.id,
-    universityName: c.universities?.name ?? null,
-    universityLocation: c.universities?.location ?? null,
-    universityDescription: c.universities?.description ?? null,
-    universityCoverUrl: universityCoverPublicUrl(c.universities?.photo_path ?? null),
+    universityName: university?.name ?? null,
+    universityLocation: university?.location ?? null,
+    universityDescription: university?.description ?? null,
+    universityPhotoUrls: uniqueGalleryUrls,
     courseName: c.name ?? null,
     subtitle: [c.degree, c.duration, c.field].filter(Boolean).join(" · ") || "—",
     courseDescription: c.description ?? null,

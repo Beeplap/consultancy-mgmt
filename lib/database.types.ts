@@ -45,6 +45,13 @@ export type University = {
   created_at?: string;
 };
 
+export type UniversityPhoto = {
+  id: string;
+  university_id: string;
+  photo_path: string;
+  created_at?: string;
+};
+
 export type Course = {
   id: string;
   university_id: string;
@@ -68,7 +75,7 @@ export type Course = {
 export type Intake = {
   id: string;
   course_id: string;
-  intake: IntakeName;
+  intake: string;
   status: IntakeStatus;
   created_at?: string;
 };
@@ -114,6 +121,12 @@ export type Database = {
         Row: University;
         Insert: Omit<University, "id" | "created_at" | "photo_path"> & { id?: string; photo_path?: string | null };
         Update: Partial<Omit<University, "id" | "created_at">>;
+        Relationships: [];
+      };
+      university_photos: {
+        Row: UniversityPhoto;
+        Insert: Omit<UniversityPhoto, "id" | "created_at"> & { id?: string };
+        Update: Partial<Omit<UniversityPhoto, "id" | "created_at">>;
         Relationships: [];
       };
       courses: {

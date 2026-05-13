@@ -57,10 +57,28 @@ function optionalDescription(formData: FormData, key: string) {
   return text;
 }
 
-function optionalCoverFile(formData: FormData, key: string) {
-  const raw = formData.get(key);
-  if (!(raw instanceof File) || raw.size === 0) return null;
-  return raw;
+function optionalCoverFiles(formData: FormData, key: string) {
+  return formData.getAll(key).filter((raw): raw is File => raw instanceof File && raw.size > 0);
+}
+
+async function addUniversityPhotoRows(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  universityId: string,
+  files: File[],
+) {
+  const photoPaths: string[] = [];
+  for (const file of files) {
+    photoPaths.push(await uploadUniversityCover(supabase, universityId, file));
+  }
+
+  if (photoPaths.length > 0) {
+    const { error } = await supabase
+      .from("university_photos")
+      .insert(photoPaths.map((photoPath) => ({ university_id: universityId, photo_path: photoPath })));
+    if (error) throw new Error(error.message);
+  }
+
+  return photoPaths;
 }
 
 const intakeNames: IntakeName[] = ["Jan", "May", "Sep", "Nov"];
@@ -128,11 +146,11 @@ export async function createUniversityAction(formData: FormData) {
 
   if (error) throw new Error(error.message);
 
-  const photo = optionalCoverFile(formData, "universityCover");
+  const photoFiles = [...optionalCoverFiles(formData, "universityPhotos"), ...optionalCoverFiles(formData, "universityCover")];
   try {
-    if (photo) {
-      const photoPath = await uploadUniversityCover(supabase, uni.id, photo);
-      await supabase.from("universities").update({ photo_path: photoPath }).eq("id", uni.id);
+    if (photoFiles.length > 0) {
+      const photoPaths = await addUniversityPhotoRows(supabase, uni.id, photoFiles);
+      await supabase.from("universities").update({ photo_path: photoPaths[0] }).eq("id", uni.id);
     }
   } catch (cleanupErr) {
     await supabase.from("universities").delete().eq("id", uni.id);
@@ -149,21 +167,37 @@ export async function updateUniversityAction(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const universityId = required(formData, "universityId");
 
-  const { data: before } = await supabase.from("universities").select("photo_path").eq("id", universityId).maybeSingle();
+  const [{ data: before }, { data: existingPhotos }] = await Promise.all([
+    supabase.from("universities").select("photo_path").eq("id", universityId).maybeSingle(),
+    supabase.from("university_photos").select("id, photo_path").eq("university_id", universityId),
+  ]);
 
   let nextPhotoPath: string | null = before?.photo_path ?? null;
   const removeCover = formData.get("removeUniversityCover") === "on";
+  const photoIdsToRemove = new Set(formData.getAll("removeUniversityPhotoIds").map((value) => String(value)));
+  const photosToRemove = (existingPhotos ?? []).filter((photo) => photoIdsToRemove.has(photo.id));
 
   if (removeCover) {
     await removeUniversityCoverObject(supabase, nextPhotoPath);
     nextPhotoPath = null;
-  } else {
-    const replacement = optionalCoverFile(formData, "universityCover");
-    if (replacement) {
-      const newPath = await uploadUniversityCover(supabase, universityId, replacement);
-      await removeUniversityCoverObject(supabase, nextPhotoPath);
-      nextPhotoPath = newPath;
-    }
+  }
+
+  for (const photo of photosToRemove) {
+    await removeUniversityCoverObject(supabase, photo.photo_path);
+  }
+  if (photosToRemove.length > 0) {
+    const { error } = await supabase.from("university_photos").delete().in(
+      "id",
+      photosToRemove.map((photo) => photo.id),
+    );
+    if (error) throw new Error(error.message);
+    if (photosToRemove.some((photo) => photo.photo_path === nextPhotoPath)) nextPhotoPath = null;
+  }
+
+  const newPhotoFiles = [...optionalCoverFiles(formData, "universityPhotos"), ...optionalCoverFiles(formData, "universityCover")];
+  if (newPhotoFiles.length > 0) {
+    const newPaths = await addUniversityPhotoRows(supabase, universityId, newPhotoFiles);
+    nextPhotoPath = nextPhotoPath ?? newPaths[0] ?? null;
   }
 
   const { error } = await supabase
@@ -577,9 +611,15 @@ export async function deleteUniversityAction(formData: FormData) {
   await requireRole("admin");
   const supabase = await createSupabaseServerClient();
   const universityId = required(formData, "universityId");
-  const { data: row } = await supabase.from("universities").select("photo_path").eq("id", universityId).maybeSingle();
+  const [{ data: row }, { data: photos }] = await Promise.all([
+    supabase.from("universities").select("photo_path").eq("id", universityId).maybeSingle(),
+    supabase.from("university_photos").select("photo_path").eq("university_id", universityId),
+  ]);
 
   await removeUniversityCoverObject(supabase, row?.photo_path);
+  for (const photo of photos ?? []) {
+    if (photo.photo_path !== row?.photo_path) await removeUniversityCoverObject(supabase, photo.photo_path);
+  }
 
   const { error } = await supabase.from("universities").delete().eq("id", universityId);
   if (error) throw new Error(error.message);

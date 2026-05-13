@@ -37,7 +37,7 @@ export default async function UniversitiesAddPage({ searchParams }: { searchPara
       <section className="rounded-lg border border-zinc-200 bg-white p-6">
         <h2 className="mb-4 text-lg font-semibold">Add university</h2>
         <p className="mb-4 text-sm text-zinc-600">Create an empty university record. Course imports are managed separately.</p>
-        <form action={createUniversityAction} className="grid gap-4">
+        <form action={createUniversityAction} encType="multipart/form-data" className="grid gap-4">
           <div className="grid gap-4 md:grid-cols-4 md:items-end">
             <Field label="Name">
               <Input name="name" />
@@ -61,14 +61,15 @@ export default async function UniversitiesAddPage({ searchParams }: { searchPara
             <Textarea name="description" placeholder="Shown in course matching when a course row is expanded." rows={4} />
           </Field>
           <div className="grid gap-2">
-            <span className="text-sm font-medium text-zinc-800">University photo (optional)</span>
+            <span className="text-sm font-medium text-zinc-800">University photos (optional)</span>
             <p className="text-xs text-zinc-500">
               Same photo for every course from this university on Match Student. JPG, PNG, WebP, or GIF · under 2MB · Supabase bucket{" "}
               <code className="rounded bg-zinc-100 px-1 py-px text-[11px]">university-covers</code>.
             </p>
             <input
-              name="universityCover"
+              name="universityPhotos"
               type="file"
+              multiple
               accept={universityCoverAcceptAttr()}
               className="max-w-md rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm hover:file:bg-zinc-200 focus:border-black focus:ring-2 focus:ring-zinc-200"
             />

@@ -38,6 +38,13 @@ create table if not exists public.universities (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.university_photos (
+  id uuid primary key default gen_random_uuid(),
+  university_id uuid not null references public.universities(id) on delete cascade,
+  photo_path text not null,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.courses (
   id uuid primary key default gen_random_uuid(),
   university_id uuid not null references public.universities(id) on delete cascade,
@@ -117,6 +124,13 @@ alter table public.universities add column if not exists description text;
 alter table public.universities add column if not exists photo_path text;
 alter table public.courses add column if not exists description text;
 
+create table if not exists public.university_photos (
+  id uuid primary key default gen_random_uuid(),
+  university_id uuid not null references public.universities(id) on delete cascade,
+  photo_path text not null,
+  created_at timestamptz not null default now()
+);
+
 do $$
 begin
   if exists (
@@ -193,6 +207,7 @@ for each row execute function public.handle_new_auth_user();
 alter table public.users enable row level security;
 alter table public.students enable row level security;
 alter table public.universities enable row level security;
+alter table public.university_photos enable row level security;
 alter table public.courses enable row level security;
 alter table public.intakes enable row level security;
 alter table public.applications enable row level security;
@@ -207,6 +222,8 @@ create policy "staff can update students" on public.students for update to authe
 
 create policy "staff can read universities" on public.universities for select to authenticated using (true);
 create policy "admins can manage universities" on public.universities for all to authenticated using (public.current_user_role() = 'admin') with check (public.current_user_role() = 'admin');
+create policy "staff can read university photos" on public.university_photos for select to authenticated using (true);
+create policy "admins can manage university photos" on public.university_photos for all to authenticated using (public.current_user_role() = 'admin') with check (public.current_user_role() = 'admin');
 
 create policy "staff can read courses" on public.courses for select to authenticated using (true);
 create policy "admins can manage courses" on public.courses for all to authenticated using (public.current_user_role() = 'admin') with check (public.current_user_role() = 'admin');

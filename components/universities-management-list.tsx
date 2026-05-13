@@ -89,6 +89,7 @@ export function UniversitiesManagementList({ universities }: UniversitiesManagem
                 ranking: university.ranking,
                 description: university.description,
                 photo_path: university.photo_path,
+                university_photos: university.university_photos,
               }}
               courses={university.courses}
             />

@@ -14,6 +14,7 @@ export type UniversityEditPayload = {
   ranking: number | null;
   description: string | null;
   photo_path: string | null;
+  university_photos?: Array<{ id: string; photo_path: string }>;
 };
 
 type UniversityEditModalProps = {
@@ -52,7 +53,20 @@ export function UniversityEditModal({ open, onOpenChange, university }: Universi
 
   if (!open) return null;
 
-  const previewUrl = universityCoverPublicUrl(university.photo_path);
+  const previewUrls = [
+    ...(university.university_photos ?? []).map((photo) => ({
+      id: photo.id,
+      path: photo.photo_path,
+      url: universityCoverPublicUrl(photo.photo_path),
+    })),
+    university.photo_path
+      ? {
+          id: "legacy-cover",
+          path: university.photo_path,
+          url: universityCoverPublicUrl(university.photo_path),
+        }
+      : null,
+  ].filter((photo): photo is { id: string; path: string; url: string } => Boolean(photo?.url));
 
   return (
     <div
@@ -100,39 +114,52 @@ export function UniversityEditModal({ open, onOpenChange, university }: Universi
             <Input name="ranking"  defaultValue={university.ranking ?? ""} />
           </Field>
           <div className="grid gap-2">
-            <span className="text-sm font-medium text-zinc-800">University photo (optional)</span>
+            <span className="text-sm font-medium text-zinc-800">University photos (optional)</span>
             <p className="text-xs text-zinc-500">
               JPG, PNG, WebP, or GIF. Max <span className="font-medium text-zinc-700">2MB</span>. Stored in Supabase bucket{" "}
               <code className="rounded bg-zinc-100 px-1 py-px text-[11px]">university-covers</code>.
             </p>
-            {previewUrl ? (
-              <a
-                href={previewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group mx-auto block max-w-full overflow-hidden rounded-lg border border-zinc-200"
-              >
-                <Image
-                  src={previewUrl}
-                  alt=""
-                  width={640}
-                  height={480}
-                  sizes="(max-width: 512px) 100vw, 512px"
-                  className="mx-auto max-h-40 max-w-full object-contain transition group-hover:opacity-95"
-                />
-                <span className="sr-only">Open current photo full size</span>
-              </a>
+            {previewUrls.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3">
+                {previewUrls.map((photo) => (
+                  <div key={photo.id} className="grid gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-2">
+                    <a
+                      href={photo.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group block overflow-hidden rounded-md border border-zinc-200 bg-white"
+                    >
+                      <Image
+                        src={photo.url}
+                        alt=""
+                        width={320}
+                        height={220}
+                        sizes="(max-width: 512px) 50vw, 240px"
+                        className="h-28 w-full object-cover transition group-hover:opacity-95"
+                      />
+                      <span className="sr-only">Open current photo full size</span>
+                    </a>
+                    {photo.id !== "legacy-cover" ? (
+                      <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-600">
+                        <input type="checkbox" name="removeUniversityPhotoIds" value={photo.id} className="h-4 w-4 rounded border-zinc-300" />
+                        Remove this photo
+                      </label>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
             ) : null}
             <input
-              name="universityCover"
+              name="universityPhotos"
               type="file"
+              multiple
               accept={universityCoverAcceptAttr()}
               className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm hover:file:bg-zinc-200 focus:border-black focus:ring-2 focus:ring-zinc-200"
             />
-            {previewUrl ? (
+            {university.photo_path ? (
               <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-600">
                 <input type="checkbox" name="removeUniversityCover" className="h-4 w-4 rounded border-zinc-300" />
-                Remove current photo when saving
+                Remove old cover photo when saving
               </label>
             ) : null}
           </div>

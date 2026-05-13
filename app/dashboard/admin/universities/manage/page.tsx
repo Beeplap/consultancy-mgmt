@@ -2,18 +2,18 @@ import Link from "next/link";
 import { UniversitiesManagementList } from "@/components/universities-management-list";
 import { universitiesAdminRoutes } from "@/lib/admin-universities-paths";
 import { requireRole } from "@/lib/auth";
-import type { Course, Intake, University } from "@/lib/database.types";
+import type { Course, Intake, University, UniversityPhoto } from "@/lib/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type CourseRow = Course & { intakes: Intake[] };
-type UniversityRow = University & { courses: CourseRow[] };
+type UniversityRow = University & { courses: CourseRow[]; university_photos: UniversityPhoto[] };
 
 export default async function UniversitiesManagePage() {
   await requireRole("admin");
   const supabase = await createSupabaseServerClient();
   const { data: universities = [] } = await supabase
     .from("universities")
-    .select("*, courses(*, intakes(*))")
+    .select("*, university_photos(*), courses(*, intakes(*))")
     .order("name", { nullsFirst: false });
 
   const uniRows = universities as UniversityRow[];
