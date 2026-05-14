@@ -1,0 +1,21 @@
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping keep-alive endpoint
+        env:
+          KEEPALIVE_URL: ${{ secrets.KEEPALIVE_URL }}
+          KEEPALIVE_SECRET: ${{ secrets.KEEPALIVE_SECRET }}
+        run: |
+          test -n "$KEEPALIVE_URL"
+          test -n "$KEEPALIVE_SECRET"
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer $KEEPALIVE_SECRET" \
+            "$KEEPALIVE_URL"
