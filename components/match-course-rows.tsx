@@ -1,8 +1,9 @@
 "use client";
 
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react";
 import Image from "next/image";
-import { Fragment, useState } from "react";
+import { useState } from "react";
+import { createPortal } from "react-dom";
 import { IntakeBadge } from "@/components/ui/badge";
 import type { IntakeStatus } from "@/lib/database.types";
 
@@ -92,7 +93,7 @@ function UniversityPhotoGallery({ urls, universityName }: { urls: string[]; univ
           ) : null}
         </div>
       </div>
-      <p className="text-[11px] text-zinc-500">Click the photo to open it full size in a new tab.</p>
+      <p className="text-[11px] text-zinc-500">Latest uploaded photo appears first. Click the photo to open it full size.</p>
     </section>
   );
 }
@@ -104,7 +105,7 @@ export function MatchCourseRows({
   rows: MatchCourseRowSerialized[];
   emptyMessage: string;
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedRow, setSelectedRow] = useState<MatchCourseRowSerialized | null>(null);
   const [detailsByCourseId, setDetailsByCourseId] = useState<Record<string, CourseDetailsState>>({});
 
   async function loadCourseDetails(courseId: string) {
@@ -122,10 +123,9 @@ export function MatchCourseRows({
     }
   }
 
-  function toggleExpanded(courseId: string) {
-    const shouldOpen = expandedId !== courseId;
-    setExpandedId(shouldOpen ? courseId : null);
-    if (shouldOpen) void loadCourseDetails(courseId);
+  function openDetails(row: MatchCourseRowSerialized) {
+    setSelectedRow(row);
+    void loadCourseDetails(row.courseId);
   }
 
   if (rows.length === 0) {
@@ -141,217 +141,181 @@ export function MatchCourseRows({
   }
 
   return (
-    <tbody className="divide-y divide-zinc-100">
-      {rows.map((row) => {
-        const open = expandedId === row.courseId;
-        const detailsState = detailsByCourseId[row.courseId];
-        return (
-          <Fragment key={row.courseId}>
-            <tr className="hover:bg-zinc-50">
-              <td className="px-2 py-3 align-top">
-                <button
-                  type="button"
-                  onClick={() => toggleExpanded(row.courseId)}
-                  className="rounded-md p-1.5 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-                  aria-expanded={open}
-                  aria-label={open ? "Hide full course details" : "Show full course details"}
-                >
-                  <ChevronDown
-                    className={`h-5 w-5 transition-transform ${open ? "rotate-180" : ""}`}
-                    aria-hidden
-                  />
-                </button>
-              </td>
-              <td className="px-4 py-3 align-top">
-                <p className="font-medium">{row.universityName ?? "—"}</p>
-                <p className="text-xs text-zinc-500">{row.universityLocation ?? ""}</p>
-              </td>
-              <td className="px-4 py-3 align-top">
-                <p>{row.courseName ?? "—"}</p>
-                <p className="text-xs text-zinc-500">{row.subtitle}</p>
-              </td>
-              <td className="px-4 py-3 align-top">
-                GPA {row.minGpa ?? "—"}
-                <br />
-                IELTS {row.minIelts ?? "—"}
-                <br />
-                PTE {row.minPte ?? "—"}
-              </td>
-              <td className="px-4 py-3 align-top">{row.waiver}</td>
-              <td className="px-4 py-3 align-top">{row.fee}</td>
-              <td className="px-4 py-3 align-top">
-                <div className="flex flex-wrap gap-2">
-                  {row.intakeEntries.map(({ id, intake, status }) => (
-                    <span
-                      key={id}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1"
-                    >
-                      <span className="text-xs font-medium">{intake}</span>
-                      <IntakeBadge status={status} />
-                    </span>
-                  ))}
-                </div>
-              </td>
-              <td className="px-4 py-3 align-top">
-                {row.matchScore != null ? (
+    <>
+      <tbody className="divide-y divide-zinc-100">
+        {rows.map((row) => (
+          <tr key={row.courseId} className="hover:bg-zinc-50">
+            <td className="px-2 py-3 align-top">
+              <button
+                type="button"
+                onClick={() => openDetails(row)}
+                className="rounded-md p-1.5 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                aria-label="Open course details"
+              >
+                <ExternalLink className="h-4 w-4" aria-hidden />
+              </button>
+            </td>
+            <td className="px-4 py-3 align-top">
+              <p className="font-medium">{row.universityName ?? "-"}</p>
+              <p className="text-xs text-zinc-500">{row.universityLocation ?? ""}</p>
+            </td>
+            <td className="px-4 py-3 align-top">
+              <p>{row.courseName ?? "-"}</p>
+              <p className="text-xs text-zinc-500">{row.subtitle}</p>
+            </td>
+            <td className="px-4 py-3 align-top">
+              GPA {row.minGpa ?? "-"}
+              <br />
+              IELTS {row.minIelts ?? "-"}
+              <br />
+              PTE {row.minPte ?? "-"}
+            </td>
+            <td className="px-4 py-3 align-top">{row.waiver}</td>
+            <td className="px-4 py-3 align-top">{row.fee}</td>
+            <td className="px-4 py-3 align-top">
+              <div className="flex flex-wrap gap-2">
+                {row.intakeEntries.map(({ id, intake, status }) => (
                   <span
-                    className={row.matchScore >= 80 ? "font-semibold text-green-700" : "font-semibold text-zinc-900"}
+                    key={id}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1"
                   >
-                    {row.matchScore}%
+                    <span className="text-xs font-medium">{intake}</span>
+                    <IntakeBadge status={status} />
                   </span>
-                ) : (
-                  <span className="text-zinc-400">—</span>
-                )}
-              </td>
-            </tr>
-            {open ? (
-              <tr className="border-t border-zinc-100 bg-zinc-50/80">
-                <td colSpan={8} className="px-4 py-5">
-                  {detailsState?.status === "loading" ? (
-                    <div className="mb-4 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-500">
-                      Loading details...
-                    </div>
-                  ) : null}
-                  {detailsState?.status === "error" ? (
-                    <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                      {detailsState.message}
-                    </div>
-                  ) : null}
-                  <div className="grid gap-6 text-sm text-zinc-800 md:grid-cols-2">
-                    <dl className="grid gap-3">
-                      <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 border-b border-zinc-100 pb-2">
-                        <dt className="text-zinc-500">University</dt>
-                        <dd className="font-medium">{row.universityName ?? "—"}</dd>
-                      </div>
-                      <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 border-b border-zinc-100 pb-2">
-                        <dt className="text-zinc-500">Location</dt>
-                        <dd>{row.universityLocation ?? "—"}</dd>
-                      </div>
-                      <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 border-b border-zinc-100 pb-2">
-                        <dt className="text-zinc-500">Course</dt>
-                        <dd className="font-medium">{row.courseName ?? "—"}</dd>
-                      </div>
-                      <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 border-b border-zinc-100 pb-2">
-                        <dt className="text-zinc-500">Programme</dt>
-                        <dd>{row.subtitle}</dd>
-                      </div>
-                      <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 border-b border-zinc-100 pb-2">
-                        <dt className="text-zinc-500">GPA / IELTS / PTE</dt>
-                        <dd>
-                          {row.minGpa ?? "—"} / {row.minIelts ?? "—"} / {row.minPte ?? "—"}
-                        </dd>
-                      </div>
-                      <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 border-b border-zinc-100 pb-2">
-                        <dt className="text-zinc-500">IELTS waiver</dt>
-                        <dd>{row.waiver}</dd>
-                      </div>
-                      <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 border-b border-zinc-100 pb-2">
-                        <dt className="text-zinc-500">Fee</dt>
-                        <dd>{row.fee}</dd>
-                      </div>
-                      <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 border-b border-zinc-100 pb-2">
-                        <dt className="text-zinc-500">Accepted gap</dt>
-                        <dd>{row.gap}</dd>
-                      </div>
-                      <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 border-b border-zinc-100 pb-2">
-                        <dt className="text-zinc-500">CAS deposit</dt>
-                        <dd>{row.cas}</dd>
-                      </div>
-                      <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 border-b border-zinc-100 pb-2">
-                        <dt className="text-zinc-500">Scholarship</dt>
-                        <dd>{row.scholarship}</dd>
-                      </div>
-                      <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 pb-1">
-                        <dt className="text-zinc-500">Intakes</dt>
-                        <dd>
-                          <ul className="flex flex-col gap-2">
-                            {row.intakeEntries.map(({ id, intake, status, score }) => (
-                              <li key={id} className="flex flex-wrap items-center gap-2">
-                                <span className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2 py-1">
-                                  <span className="text-xs font-medium">{intake}</span>
-                                  <IntakeBadge status={status} />
-                                </span>
-                                {row.ranMatch && score != null ? (
-                                  <span className="text-xs text-zinc-600">Match {score}%</span>
-                                ) : null}
-                              </li>
-                            ))}
-                          </ul>
-                        </dd>
-                      </div>
-                      {row.matchScore != null ? (
-                        <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 pt-1">
-                          <dt className="text-zinc-500">Best match</dt>
-                          <dd className="font-semibold">{row.matchScore}%</dd>
-                        </div>
-                      ) : null}
-                    </dl>
-                    <div className="space-y-5">
-                      {detailsState?.status === "loaded" ? (
-                        <UniversityPhotoGallery
-                          urls={detailsState.data.universityPhotoUrls}
-                          universityName={row.universityName}
-                        />
-                      ) : null}
-                      {false ? (
-                        <section>
-                          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                            University photo
-                          </h4>
-                          <a
-                            href=""
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group mx-auto mb-2 block max-w-md overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm"
-                          >
-                            <div className="relative h-56 w-full sm:h-72">
-                              <Image
-                                src=""
-                                alt={
-                                  row.universityName
-                                    ? `${row.universityName} — cover photo`
-                                    : "University cover photo"
-                                }
-                                fill
-                                sizes="(max-width: 768px) 100vw, 448px"
-                                className="object-cover object-center transition group-hover:opacity-95"
-                              />
-                            </div>
-                            <span className="sr-only">Open university image full screen in new tab</span>
-                          </a>
-                          <p className="text-[11px] text-zinc-500">
-                            Opens the full-size image in a new tab ({row.universityName ?? "university"}).
-                          </p>
-                        </section>
-                      ) : null}
-                      {detailsState?.status === "loaded" && detailsState.data.universityDescription ? (
-                        <section>
-                          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                            About the university
-                          </h4>
-                          <div className="whitespace-pre-wrap rounded-md border border-zinc-200 bg-white px-3 py-2.5 text-zinc-700">
-                            {detailsState.data.universityDescription}
-                          </div>
-                        </section>
-                      ) : null}
-                      {detailsState?.status === "loaded" && detailsState.data.courseDescription ? (
-                        <section>
-                          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                            About this course
-                          </h4>
-                          <div className="whitespace-pre-wrap rounded-md border border-zinc-200 bg-white px-3 py-2.5 text-zinc-700">
-                            {detailsState.data.courseDescription}
-                          </div>
-                        </section>
-                      ) : null}
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            ) : null}
-          </Fragment>
-        );
-      })}
-    </tbody>
+                ))}
+              </div>
+            </td>
+            <td className="px-4 py-3 align-top">
+              {row.matchScore != null ? (
+                <span className={row.matchScore >= 80 ? "font-semibold text-green-700" : "font-semibold text-zinc-900"}>
+                  {row.matchScore}%
+                </span>
+              ) : (
+                <span className="text-zinc-400">-</span>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+      {selectedRow
+        ? createPortal(
+            <CourseDetailsModal
+              row={selectedRow}
+              detailsState={detailsByCourseId[selectedRow.courseId]}
+              onClose={() => setSelectedRow(null)}
+            />,
+            document.body,
+          )
+        : null}
+    </>
+  );
+}
+
+function CourseDetailsModal({
+  row,
+  detailsState,
+  onClose,
+}: {
+  row: MatchCourseRowSerialized;
+  detailsState: CourseDetailsState | undefined;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/45 px-3 py-4 sm:px-6" role="dialog" aria-modal="true">
+      <div className="mx-auto flex max-h-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-zinc-200 px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-zinc-500">{row.universityName ?? "University"}</p>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight text-zinc-950">{row.courseName ?? "Course details"}</h2>
+            <p className="mt-1 text-sm text-zinc-600">{row.subtitle}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+            aria-label="Close course details"
+          >
+            <X className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto px-5 py-5">
+          {detailsState?.status === "loading" ? (
+            <div className="mb-4 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-500">
+              Loading details...
+            </div>
+          ) : null}
+          {detailsState?.status === "error" ? (
+            <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {detailsState.message}
+            </div>
+          ) : null}
+
+          <div className="grid gap-6 text-sm text-zinc-800 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,28rem)]">
+            <dl className="grid content-start gap-3">
+              <Detail label="University" value={row.universityName ?? "-"} strong />
+              <Detail label="Location" value={row.universityLocation ?? "-"} />
+              <Detail label="Course" value={row.courseName ?? "-"} strong />
+              <Detail label="Programme" value={row.subtitle} />
+              <Detail label="GPA / IELTS / PTE" value={`${row.minGpa ?? "-"} / ${row.minIelts ?? "-"} / ${row.minPte ?? "-"}`} />
+              <Detail label="IELTS waiver" value={row.waiver} />
+              <Detail label="Fee" value={row.fee} />
+              <Detail label="Accepted gap" value={row.gap} />
+              <Detail label="CAS deposit" value={row.cas} />
+              <Detail label="Scholarship" value={row.scholarship} />
+              <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 pb-1">
+                <dt className="text-zinc-500">Intakes</dt>
+                <dd>
+                  <ul className="flex flex-col gap-2">
+                    {row.intakeEntries.map(({ id, intake, status, score }) => (
+                      <li key={id} className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2 py-1">
+                          <span className="text-xs font-medium">{intake}</span>
+                          <IntakeBadge status={status} />
+                        </span>
+                        {row.ranMatch && score != null ? <span className="text-xs text-zinc-600">Match {score}%</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
+              {row.matchScore != null ? <Detail label="Best match" value={`${row.matchScore}%`} strong /> : null}
+            </dl>
+
+            <div className="space-y-5">
+              {detailsState?.status === "loaded" ? (
+                <UniversityPhotoGallery urls={detailsState.data.universityPhotoUrls} universityName={row.universityName} />
+              ) : null}
+              {detailsState?.status === "loaded" && detailsState.data.universityDescription ? (
+                <TextPanel title="About the university" body={detailsState.data.universityDescription} />
+              ) : null}
+              {detailsState?.status === "loaded" && detailsState.data.courseDescription ? (
+                <TextPanel title="About this course" body={detailsState.data.courseDescription} />
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Detail({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 border-b border-zinc-100 pb-2">
+      <dt className="text-zinc-500">{label}</dt>
+      <dd className={strong ? "font-medium" : undefined}>{value}</dd>
+    </div>
+  );
+}
+
+function TextPanel({ title, body }: { title: string; body: string }) {
+  return (
+    <section>
+      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">{title}</h4>
+      <div className="whitespace-pre-wrap rounded-md border border-zinc-200 bg-white px-3 py-2.5 text-zinc-700">
+        {body}
+      </div>
+    </section>
   );
 }

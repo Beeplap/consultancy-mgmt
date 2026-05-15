@@ -120,7 +120,7 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
           )}
         </div>
 
-        <div className="max-h-[calc(100vh-260px)] overflow-auto">
+        <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-zinc-500">
               <tr>
