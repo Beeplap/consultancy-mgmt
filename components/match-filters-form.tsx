@@ -18,7 +18,7 @@ type MatchFiltersFormProps = {
     sort?: string;
     _match?: string;
   };
-  universities: Array<{ id: string; name: string | null; location: string | null }>;
+  universities: Array<{ id: string; name: string | null; location: string | null; ranking?: number | null }>;
   cities: string[];
 };
 
@@ -69,6 +69,7 @@ export function MatchFiltersForm({ filters, universities, cities }: MatchFilters
             <option value="">All universities</option>
             {universities.map((u) => (
               <option key={u.id} value={u.id}>
+                {u.ranking ? `${u.ranking}. ` : ""}
                 {u.name?.trim() || "Unnamed university"}
               </option>
             ))}

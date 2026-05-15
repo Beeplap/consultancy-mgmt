@@ -42,7 +42,11 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
 
   const [{ count: universityDirectoryCount }, { data: universityListRaw }] = await Promise.all([
     supabase.from("universities").select("id", { count: "exact", head: true }),
-    supabase.from("universities").select("id,name,location").order("name", { nullsFirst: false }),
+    supabase
+      .from("universities")
+      .select("id,name,location,ranking")
+      .order("ranking", { ascending: true, nullsFirst: false })
+      .order("name", { nullsFirst: false }),
   ]);
   const universityList = universityListRaw ?? [];
   const cityOptions = uniqueCities(universityList.map((university) => university.location));

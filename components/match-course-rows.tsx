@@ -144,11 +144,27 @@ export function MatchCourseRows({
     <>
       <tbody className="divide-y divide-zinc-100">
         {rows.map((row) => (
-          <tr key={row.courseId} className="hover:bg-zinc-50">
+          <tr
+            key={row.courseId}
+            onClick={() => openDetails(row)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openDetails(row);
+              }
+            }}
+            tabIndex={0}
+            className="cursor-pointer hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-zinc-900"
+            aria-label={`Open details for ${row.courseName ?? "course"}`}
+          >
             <td className="px-2 py-3 align-top">
               <button
                 type="button"
-                onClick={() => openDetails(row)}
+                tabIndex={-1}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openDetails(row);
+                }}
                 className="rounded-md p-1.5 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
                 aria-label="Open course details"
               >
