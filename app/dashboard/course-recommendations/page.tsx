@@ -1,10 +1,9 @@
 import { MatchCourseRows, type MatchCourseRowSerialized } from "@/components/match-course-rows";
 import { MatchFiltersForm } from "@/components/match-filters-form";
 import { currencyGBP } from "@/lib/format";
-import { universityCoverPublicUrl } from "@/lib/university-cover";
 import { getIeltsWaiverStatus, hasEnglishWaiver, rankCourses, type MatchingCriteria, type Recommendation } from "@/lib/matching";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { CourseWithUniversity, EnglishGrade, Intake, IntakeName, UniversityPhoto } from "@/lib/database.types";
+import type { CourseWithUniversity, EnglishGrade, Intake, IntakeName } from "@/lib/database.types";
 
 type PageProps = {
   searchParams: Promise<{
@@ -32,9 +31,8 @@ type CourseTableRow = {
   matchScore: number | null;
 };
 
-type UniversityWithPhotos = NonNullable<CourseWithUniversity["universities"]> & {
-  university_photos?: UniversityPhoto[];
-};
+const courseListSelect =
+  "id, university_id, name, degree, duration, field, min_gpa, min_ielts, min_pte, ielts_waiver, fee, accepted_gap, cas_deposit, cas_deposit_amount, scholarship_upto, universities(id, name, location, ranking), intakes(id, course_id, intake, status)";
 
 export default async function CourseRecommendationsPage({ searchParams }: PageProps) {
   const filters = await searchParams;
@@ -43,7 +41,7 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
   const supabase = await createSupabaseServerClient();
 
   const [{ count: universityDirectoryCount }, { data: universityListRaw }] = await Promise.all([
-    supabase.from("universities").select("*", { count: "exact", head: true }),
+    supabase.from("universities").select("id", { count: "exact", head: true }),
     supabase.from("universities").select("id,name,location").order("name", { nullsFirst: false }),
   ]);
   const universityList = universityListRaw ?? [];
@@ -51,7 +49,7 @@ export default async function CourseRecommendationsPage({ searchParams }: PagePr
 
   let query = supabase
     .from("courses")
-    .select("*, universities(*, university_photos(*)), intakes(*)")
+    .select(courseListSelect)
     .order("fee", { ascending: true, nullsFirst: false });
 
   if (ranMatch) {
@@ -165,12 +163,7 @@ function mergeCourseRows(rows: CourseWithUniversity[]): CourseWithUniversity[] {
     if (prev.universities && row.universities) {
       prev.universities = {
         ...prev.universities,
-        description: prev.universities.description ?? row.universities.description,
-        photo_path: prev.universities.photo_path ?? row.universities.photo_path,
-        university_photos:
-          (prev.universities as UniversityWithPhotos).university_photos ??
-          (row.universities as UniversityWithPhotos).university_photos,
-      } as UniversityWithPhotos;
+      };
     }
   }
   return [...byId.values()];
@@ -333,23 +326,15 @@ function formatCasLine(course: Pick<CourseWithUniversity, "cas_deposit" | "cas_d
 
 function serializeMatchCourseRow(row: CourseTableRow, ranMatch: boolean): MatchCourseRowSerialized {
   const c = row.course;
-  const university = c.universities as UniversityWithPhotos | null;
-  const galleryUrls = [
-    ...(university?.university_photos ?? []).map((photo) => universityCoverPublicUrl(photo.photo_path)),
-    universityCoverPublicUrl(university?.photo_path ?? null),
-  ].filter((url): url is string => Boolean(url));
-  const uniqueGalleryUrls = [...new Set(galleryUrls)];
+  const university = c.universities;
   const scholarship =
     c.scholarship_upto != null ? `Up to ${currencyGBP(c.scholarship_upto)}` : "—";
   return {
     courseId: c.id,
     universityName: university?.name ?? null,
     universityLocation: university?.location ?? null,
-    universityDescription: university?.description ?? null,
-    universityPhotoUrls: uniqueGalleryUrls,
     courseName: c.name ?? null,
     subtitle: [c.degree, c.duration, c.field].filter(Boolean).join(" · ") || "—",
-    courseDescription: c.description ?? null,
     minGpa: c.min_gpa,
     minIelts: c.min_ielts,
     minPte: c.min_pte,

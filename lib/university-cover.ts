@@ -18,7 +18,13 @@ export function universityCoverAcceptAttr() {
   return "image/jpeg,image/jpg,image/png,image/webp,image/gif";
 }
 
-export function universityCoverPublicUrl(path: string | null | undefined): string | null {
+type UniversityCoverUrlOptions = {
+  width?: number;
+  height?: number;
+  quality?: number;
+};
+
+export function universityCoverPublicUrl(path: string | null | undefined, options: UniversityCoverUrlOptions = {}): string | null {
   const trimmed = typeof path === "string" ? path.trim() : "";
   if (!trimmed) return null;
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, "") ?? "";
@@ -27,7 +33,16 @@ export function universityCoverPublicUrl(path: string | null | undefined): strin
     .split("/")
     .map((seg) => encodeURIComponent(seg))
     .join("/");
-  return `${base}/storage/v1/object/public/${UNIVERSITY_COVERS_BUCKET}/${encodedPath}`;
+  const canTransform = process.env.NEXT_PUBLIC_SUPABASE_IMAGE_TRANSFORMATIONS === "1";
+  if (!canTransform || (!options.width && !options.height && !options.quality)) {
+    return `${base}/storage/v1/object/public/${UNIVERSITY_COVERS_BUCKET}/${encodedPath}`;
+  }
+
+  const params = new URLSearchParams();
+  if (options.width) params.set("width", String(options.width));
+  if (options.height) params.set("height", String(options.height));
+  if (options.quality) params.set("quality", String(options.quality));
+  return `${base}/storage/v1/render/image/public/${UNIVERSITY_COVERS_BUCKET}/${encodedPath}?${params}`;
 }
 
 export function validateUniversityCoverMeta(file: File) {
@@ -47,6 +62,7 @@ export async function uploadUniversityCover(supabase: SupabaseServerClient, univ
   const buffer = Buffer.from(await file.arrayBuffer());
   const { error } = await supabase.storage.from(UNIVERSITY_COVERS_BUCKET).upload(objectPath, buffer, {
     contentType: file.type || "application/octet-stream",
+    cacheControl: "31536000",
     upsert: false,
   });
   if (error) throw new Error(error.message);

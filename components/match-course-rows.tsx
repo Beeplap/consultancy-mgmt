@@ -6,16 +6,23 @@ import { Fragment, useState } from "react";
 import { IntakeBadge } from "@/components/ui/badge";
 import type { IntakeStatus } from "@/lib/database.types";
 
+type MatchCourseDetails = {
+  universityDescription: string | null;
+  courseDescription: string | null;
+  universityPhotoUrls: string[];
+};
+
+type CourseDetailsState =
+  | { status: "loading" }
+  | { status: "loaded"; data: MatchCourseDetails }
+  | { status: "error"; message: string };
+
 export type MatchCourseRowSerialized = {
   courseId: string;
   universityName: string | null;
   universityLocation: string | null;
-  universityDescription: string | null;
-  /** Public URLs for university-wide gallery images from Supabase Storage. */
-  universityPhotoUrls: string[];
   courseName: string | null;
   subtitle: string;
-  courseDescription: string | null;
   minGpa: string | null;
   minIelts: string | null;
   minPte: string | null;
@@ -57,6 +64,7 @@ function UniversityPhotoGallery({ urls, universityName }: { urls: string[]; univ
                 alt={universityName ? `${universityName} photo` : "University photo"}
                 fill
                 sizes="(max-width: 768px) 100vw, 448px"
+                unoptimized={currentUrl.includes("/storage/v1/render/image/")}
                 className="object-cover object-center transition group-hover:opacity-95"
               />
             </div>
@@ -97,6 +105,28 @@ export function MatchCourseRows({
   emptyMessage: string;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [detailsByCourseId, setDetailsByCourseId] = useState<Record<string, CourseDetailsState>>({});
+
+  async function loadCourseDetails(courseId: string) {
+    if (detailsByCourseId[courseId]) return;
+
+    setDetailsByCourseId((current) => ({ ...current, [courseId]: { status: "loading" } }));
+    try {
+      const response = await fetch(`/api/course-details/${courseId}`);
+      if (!response.ok) throw new Error("Could not load course details.");
+      const data = (await response.json()) as MatchCourseDetails;
+      setDetailsByCourseId((current) => ({ ...current, [courseId]: { status: "loaded", data } }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not load course details.";
+      setDetailsByCourseId((current) => ({ ...current, [courseId]: { status: "error", message } }));
+    }
+  }
+
+  function toggleExpanded(courseId: string) {
+    const shouldOpen = expandedId !== courseId;
+    setExpandedId(shouldOpen ? courseId : null);
+    if (shouldOpen) void loadCourseDetails(courseId);
+  }
 
   if (rows.length === 0) {
     return (
@@ -114,13 +144,14 @@ export function MatchCourseRows({
     <tbody className="divide-y divide-zinc-100">
       {rows.map((row) => {
         const open = expandedId === row.courseId;
+        const detailsState = detailsByCourseId[row.courseId];
         return (
           <Fragment key={row.courseId}>
             <tr className="hover:bg-zinc-50">
               <td className="px-2 py-3 align-top">
                 <button
                   type="button"
-                  onClick={() => setExpandedId((id) => (id === row.courseId ? null : row.courseId))}
+                  onClick={() => toggleExpanded(row.courseId)}
                   className="rounded-md p-1.5 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
                   aria-expanded={open}
                   aria-label={open ? "Hide full course details" : "Show full course details"}
@@ -176,6 +207,16 @@ export function MatchCourseRows({
             {open ? (
               <tr className="border-t border-zinc-100 bg-zinc-50/80">
                 <td colSpan={8} className="px-4 py-5">
+                  {detailsState?.status === "loading" ? (
+                    <div className="mb-4 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-500">
+                      Loading details...
+                    </div>
+                  ) : null}
+                  {detailsState?.status === "error" ? (
+                    <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                      {detailsState.message}
+                    </div>
+                  ) : null}
                   <div className="grid gap-6 text-sm text-zinc-800 md:grid-cols-2">
                     <dl className="grid gap-3">
                       <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 border-b border-zinc-100 pb-2">
@@ -246,7 +287,12 @@ export function MatchCourseRows({
                       ) : null}
                     </dl>
                     <div className="space-y-5">
-                      <UniversityPhotoGallery urls={row.universityPhotoUrls} universityName={row.universityName} />
+                      {detailsState?.status === "loaded" ? (
+                        <UniversityPhotoGallery
+                          urls={detailsState.data.universityPhotoUrls}
+                          universityName={row.universityName}
+                        />
+                      ) : null}
                       {false ? (
                         <section>
                           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
@@ -278,23 +324,23 @@ export function MatchCourseRows({
                           </p>
                         </section>
                       ) : null}
-                      {row.universityDescription ? (
+                      {detailsState?.status === "loaded" && detailsState.data.universityDescription ? (
                         <section>
                           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                             About the university
                           </h4>
                           <div className="whitespace-pre-wrap rounded-md border border-zinc-200 bg-white px-3 py-2.5 text-zinc-700">
-                            {row.universityDescription}
+                            {detailsState.data.universityDescription}
                           </div>
                         </section>
                       ) : null}
-                      {row.courseDescription ? (
+                      {detailsState?.status === "loaded" && detailsState.data.courseDescription ? (
                         <section>
                           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                             About this course
                           </h4>
                           <div className="whitespace-pre-wrap rounded-md border border-zinc-200 bg-white px-3 py-2.5 text-zinc-700">
-                            {row.courseDescription}
+                            {detailsState.data.courseDescription}
                           </div>
                         </section>
                       ) : null}

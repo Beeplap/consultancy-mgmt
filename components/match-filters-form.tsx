@@ -26,7 +26,6 @@ const englishGrades: EnglishGrade[] = ["A+", "A", "B+", "B", "C+", "C", "D", "E"
 const intakes: IntakeName[] = ["Jan", "May", "Sep", "Nov"];
 
 export function MatchFiltersForm({ filters, universities, cities }: MatchFiltersFormProps) {
-  const sortedUniversities = [...universities].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
   return (
     <form method="get" action="/dashboard/course-recommendations" className="grid gap-5 border-b border-zinc-200 p-4 md:p-5">
       <input type="hidden" name="_match" value="1" />
@@ -68,7 +67,7 @@ export function MatchFiltersForm({ filters, universities, cities }: MatchFilters
         <Field label="University">
           <Select name="universityId" defaultValue={filters.universityId ?? ""} className="h-10 w-full">
             <option value="">All universities</option>
-            {sortedUniversities.map((u) => (
+            {universities.map((u) => (
               <option key={u.id} value={u.id}>
                 {u.name?.trim() || "Unnamed university"}
               </option>
